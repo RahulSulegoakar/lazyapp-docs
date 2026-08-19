@@ -1,0 +1,79 @@
+---
+title: "Authentication"
+description: "API keys, scopes and restrictions."
+---
+
+Every request carries a LazyApp API key as a Bearer token:
+
+```bash
+curl https://lazyapp.in/v1/contacts \
+  -H "Authorization: Bearer sk_live_..."
+```
+
+HTTPS only. There is no cookie, session or signed-request alternative for the REST API.
+
+## Key types
+
+| Prefix | Mode | Reaches a real phone |
+| --- | --- | --- |
+| `sk_test_` | `test` | No |
+| `sk_live_` | `live` | Yes |
+
+The prefix is not decoration — it determines the workspace mode the key operates in. A test key cannot read live data and a live key cannot read test data, so the two never mix.
+
+<Warning>
+  A key is displayed once, when you create it. LazyApp stores only a hash, so a lost key
+  cannot be recovered — create a new one and revoke the old.
+</Warning>
+
+## Scopes
+
+Each key carries scopes. A request for an endpoint outside them returns `403`.
+
+| Scope | Grants |
+| --- | --- |
+| `messages:send` | Send messages, create contacts, trigger workflows and events |
+| `messages:read` | Read messages, contacts, conversations, workflows and capabilities |
+| `templates:read` | Read templates |
+| `templates:write` | Create, sync and delete templates |
+| `media:write` | Upload and delete media |
+| `webhooks:write` | Manage webhook endpoints and read deliveries |
+| `flows:write` | Manage WhatsApp Flows and read responses |
+| `customers:write` | Manage platform customers, setup links and embed tokens |
+| `billing:read` | Read billing and usage |
+
+Grant the narrowest set that works. A key used only for OTP delivery needs `messages:send` and nothing else.
+
+The scope each endpoint requires is listed on its [reference page](/api-reference/messages/send-a-message).
+
+## Restrictions
+
+Beyond scopes, a key can be restricted to:
+
+- **Specific phone numbers.** A send from a number outside the list returns `403`, even with `messages:send`. Useful when one key serves one product line.
+- **Specific IP addresses.** Requests from anywhere else are rejected.
+- **A single platform customer.** Keys minted through
+  [`POST /v1/platform/customers/{customer}/api-keys`](/api-reference/platform/issue-an-api-key-for-a-customer)
+  can only see that customer's workspace.
+
+## Failed attempts
+
+Requests with a missing or invalid key never reach the per-key rate limiter — they are throttled per IP instead. Brute-forcing a key gets you rate limited quickly.
+
+## What a failure looks like
+
+<CodeGroup>
+```json 401 Unauthenticated
+{ "message": "Unauthenticated." }
+```
+
+```json 403 Wrong scope
+{ "message": "This API key is missing the required scope." }
+```
+
+```json 403 Restricted number
+{ "message": "This API key is not allowed to use that phone number." }
+```
+</CodeGroup>
+
+See [Errors](/concepts/errors) for the full list.

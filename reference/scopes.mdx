@@ -1,0 +1,48 @@
+---
+title: "Scopes"
+description: "What each scope grants."
+---
+
+Every API key carries scopes. A call outside them returns `403`.
+
+| Scope | Grants |
+| --- | --- |
+| `messages:send` | Send messages, create and update contacts, send events, trigger workflows, start broadcasts |
+| `messages:read` | Read messages, contacts, conversations, workflows, broadcasts, capabilities, scheduled messages |
+| `templates:read` | List and read templates |
+| `templates:write` | Create, sync and delete templates |
+| `media:write` | Upload and delete media |
+| `webhooks:write` | Manage webhook endpoints and read deliveries |
+| `flows:write` | Manage WhatsApp Flows and read their responses |
+| `customers:write` | Manage platform customers, setup links and embed tokens |
+| `billing:read` | Read billing and usage |
+
+## By endpoint group
+
+| Endpoints | Read scope | Write scope |
+| --- | --- | --- |
+| Messages | `messages:read` | `messages:send` |
+| Contacts | `messages:read` | `messages:send` |
+| Conversations | `messages:read` | — |
+| Events | `messages:read` | `messages:send` |
+| Broadcasts | `messages:read` | `messages:send` |
+| Workflows | `messages:read` | `messages:send` |
+| Capabilities | `messages:read` | — |
+| Templates | `templates:read` | `templates:write` |
+| Media | `messages:read` | `media:write` |
+| Webhooks | `webhooks:write` | `webhooks:write` |
+| Flows | `flows:write` | `flows:write` |
+| Verify — send | — | `messages:send` |
+| Verify — verify | `messages:read` | — |
+| Platform | `customers:write` | `customers:write` |
+
+<Note>
+  Media metadata reads use `messages:read`, while uploads and deletes need `media:write`.
+  A key that only sends messages referencing existing media does not need `media:write`.
+</Note>
+
+## Choosing
+
+Grant the narrowest set that works, and use separate keys for separate jobs. A key that only delivers OTPs needs `messages:send` and nothing else — so if it leaks, it cannot read your conversation history.
+
+Keys can also be restricted to specific phone numbers or IP addresses. See [Authentication](/authentication#restrictions).

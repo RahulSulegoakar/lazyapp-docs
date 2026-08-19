@@ -1,0 +1,114 @@
+---
+title: "Event reference"
+description: "Every webhook LazyApp sends."
+---
+
+Subscribe to what you handle by listing types in `subscribed_events`, or omit it to receive everything.
+
+## Messages
+
+| Event | When |
+| --- | --- |
+| `message.received` | A contact messaged you. Includes replies, button taps, media and location |
+| `message.queued` | Accepted by LazyApp, not yet handed to the provider |
+| `message.sent` | The provider accepted it |
+| `message.delivered` | It reached the recipient's device |
+| `message.read` | The recipient opened it |
+| `message.played` | A voice note was played |
+| `message.failed` | Delivery failed. `error_message` carries the reason |
+
+`data.message` includes `metadata` you attached when sending, the `request_id` of the originating API call, and `provider_message_id`.
+
+<Note>
+  These do not arrive in order. A `message.read` may land before the `message.delivered`
+  for the same message.
+</Note>
+
+## Templates
+
+| Event | When |
+| --- | --- |
+| `template.pending` | Submitted to Meta for review |
+| `template.approved` | Approved and sendable |
+| `template.rejected` | Declined. `rejection_reason` says why |
+| `template.paused` | Paused on quality grounds — temporarily unsendable |
+| `template.disabled` | Disabled after repeated problems |
+| `template.category_changed` | Meta re-categorised it, which changes what you pay |
+
+## Verify
+
+| Event | When |
+| --- | --- |
+| `otp.requested` | A passcode was sent |
+| `otp.verified` | A correct code was submitted |
+| `otp.failed` | A wrong code, or the challenge expired |
+
+Codes are redacted from all three payloads.
+
+## Contacts
+
+| Event | When |
+| --- | --- |
+| `contact.updated` | Contact details or identifiers changed |
+| `contact.opted_in` | Consent recorded |
+| `contact.opted_out` | Opt-out recorded. Stop sending marketing to them |
+
+## Numbers and connections
+
+| Event | When |
+| --- | --- |
+| `phone_number.updated` | Display name, tier or configuration changed |
+| `phone_number.quality_changed` | Meta's quality rating moved. Worth alerting on |
+| `connection.connected` | A WhatsApp account finished connecting |
+| `connection.attention_required` | Action needed, e.g. a credential or verification problem |
+| `connection.disconnected` | The connection stopped working |
+
+## Flows
+
+| Event | When |
+| --- | --- |
+| `flow.published` | A flow became sendable |
+| `flow.failed` | Publishing failed, or the data endpoint is unhealthy |
+| `flow.response_received` | A user completed a flow. `data` carries the submission |
+
+## Workflows
+
+| Event | When |
+| --- | --- |
+| `workflow.started` | An automation began for a contact |
+| `workflow.completed` | It reached an end node |
+| `workflow.failed` | A node errored and the run stopped |
+
+## Campaigns
+
+| Event | When |
+| --- | --- |
+| `campaign.started` | A broadcast began sending |
+| `campaign.completed` | All recipients processed |
+| `campaign.failed` | The broadcast stopped early |
+
+## Calls
+
+| Event | When |
+| --- | --- |
+| `call.received` | An inbound WhatsApp call |
+| `call.ended` | A call finished. Includes duration |
+
+Only fires on numbers where Meta has enabled calling. Check [capabilities](/concepts/capabilities).
+
+## Platform
+
+These matter if you resell LazyApp.
+
+| Event | When |
+| --- | --- |
+| `customer.created` | A customer workspace was created |
+| `customer.updated` | Customer details changed |
+| `customer.connected` | Your customer finished connecting their WhatsApp account |
+| `customer.suspended` | Sending was blocked for that customer |
+| `customer.archived` | The workspace was retired |
+| `customer.deleted` | The workspace was erased |
+| `customer.usage_alert` | Usage crossed the configured threshold |
+| `setup_link.failed` | A customer's connection attempt failed |
+
+`customer.connected` and `setup_link.failed` are the two to handle first — they tell you whether onboarding actually worked. See [setup links](/platform/setup-links).

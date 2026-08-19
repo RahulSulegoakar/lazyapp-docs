@@ -1,0 +1,99 @@
+---
+title: "Templates"
+description: "Create, submit and track message templates."
+---
+
+A template is pre-approved content. It is the only way to message someone outside the 24-hour customer-service window, so most production traffic is templates.
+
+## Categories
+
+Meta requires one of three, and it drives pricing:
+
+| Category | For | Notes |
+| --- | --- | --- |
+| `UTILITY` | Order updates, appointment reminders, receipts | Cheapest. Must relate to an existing transaction |
+| `AUTHENTICATION` | One-time passcodes | Use [Verify](/sending/verify) rather than building this yourself |
+| `MARKETING` | Offers, announcements, re-engagement | Most expensive, and subject to opt-out and quality scrutiny |
+
+<Warning>
+  Meta re-categorises templates it judges to be miscategorised, which changes what you pay.
+  A promotional message dressed as a utility template will be moved to marketing, and you
+  receive a `template.category_changed` [webhook](/webhooks/events).
+</Warning>
+
+## Creating one
+
+```bash
+curl https://lazyapp.in/v1/templates \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "order_shipped",
+    "language": "en",
+    "category": "UTILITY",
+    "body_text": "Hi {{1}}, order {{2}} ships today and arrives {{3}}.",
+    "body_examples": ["Asha", "1042", "Thursday"],
+    "footer_text": "Reply STOP to opt out",
+    "submit": true
+  }'
+```
+
+Names must be lowercase, digits and underscores only, and are unique per language within your workspace.
+
+`body_examples` are not optional in practice: Meta rejects templates whose placeholders it cannot evaluate. Give one realistic example per placeholder, in order.
+
+`submit: true` sends it to Meta immediately. Leave it out to keep a draft.
+
+## Headers and buttons
+
+```json
+{
+  "header": { "format": "TEXT", "text": "Order update" },
+  "buttons": [
+    { "type": "URL", "text": "Track", "url": "https://acme.example/track/{{1}}" },
+    { "type": "QUICK_REPLY", "text": "Talk to support" }
+  ]
+}
+```
+
+`header.format` is `NONE`, `TEXT`, `IMAGE`, `VIDEO` or `DOCUMENT`. Button types are `QUICK_REPLY`, `URL`, `PHONE_NUMBER`, `OTP` and `FLOW`. URL buttons must be https.
+
+## Lifecycle
+
+Templates move through states, and not all of them are yours to control:
+
+<Steps>
+  <Step title="draft">
+    Created in LazyApp, not yet sent to Meta.
+  </Step>
+  <Step title="pending">
+    Submitted. Review usually takes minutes but can take much longer.
+  </Step>
+  <Step title="approved">
+    Sendable. You get a `template.approved` webhook.
+  </Step>
+  <Step title="rejected">
+    Meta declined it. `rejection_reason` says why. Fix and resubmit under a new name.
+  </Step>
+  <Step title="paused or disabled">
+    Approval is not permanent. Poor recipient reactions can pause a template, and repeated
+    problems disable it. You get `template.paused` and `template.disabled` webhooks.
+  </Step>
+</Steps>
+
+Never assume a template that worked yesterday works today. Read the status, and handle a send failure gracefully.
+
+## Sending one
+
+See [messages](/sending/messages#types), or let [events](/sending/events) pick the template for you.
+
+## Editing in Business Manager
+
+If someone edits templates directly at Meta, pull the changes in:
+
+```bash
+curl -X POST https://lazyapp.in/v1/templates/sync \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+LazyApp also syncs statuses automatically from Meta's webhooks, so this is for reconciliation rather than routine use.

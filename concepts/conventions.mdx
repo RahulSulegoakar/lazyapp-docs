@@ -1,0 +1,65 @@
+---
+title: "Conventions"
+description: "What is true of every endpoint."
+---
+
+## Base URL
+
+```
+https://lazyapp.in
+```
+
+HTTPS only. Requests over HTTP are rejected, not redirected.
+
+## Requests
+
+- JSON request bodies, `Content-Type: application/json`. Media upload is `multipart/form-data`.
+- Bearer authentication on every route. See [Authentication](/authentication).
+- Timestamps you send and receive are ISO 8601 with an offset: `2026-08-19T11:42:07+00:00`.
+
+## Identifiers
+
+Objects are addressed by UUID, and the UUID is stable for the life of the object. Where Meta has its own identifier — a `wamid`, a media id, a phone number id — LazyApp returns both, so you can correlate with Meta's own tooling without storing two identities yourself.
+
+Platform-level objects carry a readable prefix: customers are `cus_...`, setup links `set_...`, conversations `cnv_...`.
+
+## Response headers
+
+Every `/v1` response carries:
+
+| Header | Meaning |
+| --- | --- |
+| `X-LazyApp-Api-Version` | The API version that served the request, currently `v1` |
+| `X-Request-Id` | Correlation id. Send your own to have it echoed back |
+| `X-RateLimit-Limit` | Your per-minute ceiling |
+| `X-RateLimit-Remaining` | Requests left in the current window |
+
+Two more appear only when relevant:
+
+| Header | Meaning |
+| --- | --- |
+| `Idempotency-Replayed: true` | This response was replayed, not recomputed. See [Idempotency](/concepts/idempotency) |
+| `Deprecation` / `Sunset` | This endpoint is going away. See [Versioning](/reference/versioning) |
+
+<Tip>
+  Log `X-Request-Id` alongside your own request logs. Quoting it in a support email lets
+  us find the exact request, including the provider call it made.
+</Tip>
+
+## Correlation
+
+Messages carry the `request_id` of the call that created them, so a delivery report weeks later still points back at the API request that started it.
+
+## Pagination
+
+List endpoints use [cursor pagination](/concepts/pagination). No endpoint returns an unbounded array.
+
+## Errors
+
+Failures return a JSON object with a `message`, and validation failures add a per-field `errors` map. See [Errors](/concepts/errors).
+
+## Compatibility
+
+Inside `v1` we only make additive changes: new fields on responses, new optional request fields, new endpoints, new enum values. Treat unknown fields as forward compatibility rather than errors, and do not assume an enum is closed.
+
+Anything that would break a working integration goes in a new version, announced with `Deprecation` and `Sunset` headers on the affected routes first.

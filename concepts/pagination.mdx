@@ -1,0 +1,100 @@
+---
+title: "Pagination"
+description: "Cursor paging on every list."
+---
+
+List endpoints return a page of results and an opaque cursor:
+
+```json
+{
+  "data": [
+    { "uuid": "9f8b1c2d-...", "phone_number": "+919812345670" }
+  ],
+  "next_cursor": "eyJpZCI6MTIzLCJfcG9pbnRzVG9OZXh0SXRlbXMiOnRydWV9"
+}
+```
+
+Pass it back as `cursor` for the next page:
+
+```bash
+curl "https://lazyapp.in/v1/contacts?limit=100&cursor=eyJpZCI6MTIz..." \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+`next_cursor` is `null` on the last page. That — not an empty `data` array — is how you know you are done.
+
+## Why cursors, not page numbers
+
+Offset paging drifts. If ten contacts are created while you walk page 3 to page 4, offset paging shows you rows twice and skips others. A cursor is anchored to a row, so a page boundary stays put no matter what is written underneath it.
+
+It also stays fast. `?page=5000` makes the database count through everything before it; a cursor does not.
+
+## Limits
+
+`limit` accepts 1–100 and defaults to 25. Values outside the range are clamped, not rejected.
+
+## Walking every page
+
+<CodeGroup>
+```js Node
+async function* allContacts(apiKey) {
+  let cursor = null;
+
+  do {
+    const url = new URL('https://lazyapp.in/v1/contacts');
+    url.searchParams.set('limit', '100');
+    if (cursor) url.searchParams.set('cursor', cursor);
+
+    const response = await fetch(url, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    if (!response.ok) throw new Error(`LazyApp ${response.status}`);
+
+    const page = await response.json();
+    yield* page.data;
+    cursor = page.next_cursor;
+  } while (cursor);
+}
+```
+
+```python Python
+def all_contacts(api_key):
+    cursor = None
+
+    while True:
+        params = {"limit": 100}
+        if cursor:
+            params["cursor"] = cursor
+
+        response = requests.get(
+            "https://lazyapp.in/v1/contacts",
+            headers={"Authorization": f"Bearer {api_key}"},
+            params=params,
+        )
+        response.raise_for_status()
+
+        page = response.json()
+        yield from page["data"]
+
+        cursor = page["next_cursor"]
+        if not cursor:
+            return
+```
+</CodeGroup>
+
+<Warning>
+  Treat the cursor as opaque. It encodes ordering internals and its format is not part of
+  the API contract — do not parse it or construct one yourself.
+</Warning>
+
+## The one exception
+
+`GET /v1/platform/customers` uses page numbers, because the list is small and bounded by how many customers you have:
+
+```json
+{
+  "data": [],
+  "meta": { "current_page": 1, "last_page": 3, "total": 118 }
+}
+```

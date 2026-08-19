@@ -1,0 +1,90 @@
+---
+title: "Verifying webhooks"
+description: "Never trust an unverified body."
+---
+
+Your endpoint is a public URL. Anyone can POST to it. Verify the signature before you act on a payload.
+
+`X-LazyApp-Signature` is `sha256=` followed by an HMAC-SHA256 of the **raw request body**, keyed with your endpoint's signing secret.
+
+## Implementation
+
+<CodeGroup>
+```js Node
+import crypto from 'node:crypto';
+
+function verify(rawBody, header, secret) {
+  const expected =
+    'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+
+  const a = Buffer.from(expected);
+  const b = Buffer.from(header ?? '');
+
+  // Length-check first: timingSafeEqual throws on a length mismatch.
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// Express — note the raw body parser, not express.json()
+app.post(
+  '/webhooks/lazyapp',
+  express.raw({ type: 'application/json' }),
+  (req, res) => {
+    if (!verify(req.body, req.get('X-LazyApp-Signature'), process.env.LAZYAPP_WEBHOOK_SECRET)) {
+      return res.sendStatus(401);
+    }
+
+    const event = JSON.parse(req.body.toString('utf8'));
+    void enqueue(event);
+
+    res.sendStatus(200);
+  },
+);
+```
+
+```python Python
+import hashlib, hmac
+
+def verify(raw_body: bytes, header: str, secret: str) -> bool:
+    expected = "sha256=" + hmac.new(
+        secret.encode(), raw_body, hashlib.sha256
+    ).hexdigest()
+
+    return hmac.compare_digest(expected, header or "")
+```
+
+```php PHP
+$expected = 'sha256='.hash_hmac('sha256', $request->getContent(), $secret);
+
+abort_unless(
+    hash_equals($expected, (string) $request->header('X-LazyApp-Signature')),
+    401,
+);
+```
+</CodeGroup>
+
+## Three ways this goes wrong
+
+<AccordionGroup>
+  <Accordion title="Comparing the parsed body instead of the raw bytes">
+    The most common mistake. Any JSON framework that re-serialises the body will reorder
+    keys or change whitespace, and the HMAC will never match. Capture the raw bytes before
+    parsing.
+  </Accordion>
+  <Accordion title="Using == instead of a constant-time compare">
+    A normal string comparison returns early on the first differing byte, which leaks the
+    secret to an attacker who can measure it. Use `timingSafeEqual`, `hmac.compare_digest`
+    or `hash_equals`.
+  </Accordion>
+  <Accordion title="Verifying, then trusting the body's own ids">
+    A valid signature proves the payload came from LazyApp, not that it is fresh.
+    Deduplicate on `X-LazyApp-Delivery` so a replayed delivery cannot double-apply.
+  </Accordion>
+</AccordionGroup>
+
+## Rotating a secret
+
+Rotate from the console. Replays continue to verify because they are re-signed with the current secret by default.
+
+## Meta's inbound signature
+
+Separately, LazyApp verifies Meta's own `X-Hub-Signature-256` on every inbound WhatsApp webhook and deduplicates redelivered events before they reach your workspace. You do not need to handle that — it happens before anything is written.

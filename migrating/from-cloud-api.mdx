@@ -1,0 +1,118 @@
+---
+title: "Migrating from Meta's Cloud API"
+description: "Change the base URL and the token."
+---
+
+If you already call Meta's Cloud API, LazyApp accepts Meta-shaped requests and returns Meta-shaped responses. You can move without rewriting your integration, then adopt the native API where it earns its keep.
+
+## The swap
+
+| | Cloud API | LazyApp |
+| --- | --- | --- |
+| Base URL | `https://graph.facebook.com` | `https://lazyapp.in/meta/whatsapp` |
+| Auth | Meta system user token | `Authorization: Bearer sk_live_...` |
+| Path | `/v21.0/{phone_number_id}/messages` | unchanged |
+
+<CodeGroup>
+```bash Before
+curl https://graph.facebook.com/v21.0/123456789012345/messages \
+  -H "Authorization: Bearer EAAG..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messaging_product": "whatsapp",
+    "to": "919812345670",
+    "type": "text",
+    "text": { "body": "Hello" }
+  }'
+```
+
+```bash After
+curl https://lazyapp.in/meta/whatsapp/v21.0/123456789012345/messages \
+  -H "Authorization: Bearer sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messaging_product": "whatsapp",
+    "to": "919812345670",
+    "type": "text",
+    "text": { "body": "Hello" }
+  }'
+```
+</CodeGroup>
+
+Same body, same response shape, same error envelope. The version segment is accepted and ignored, so you do not have to chase Graph API versions.
+
+## What the proxy covers
+
+| Endpoint | Method |
+| --- | --- |
+| `/meta/whatsapp/{version}/{phone_number_id}/messages` | `POST` |
+| `/meta/whatsapp/{version}/{phone_number_id}/media` | `POST` |
+| `/meta/whatsapp/{version}/{waba_id}/message_templates` | `GET`, `POST` |
+
+The proxy is a translation layer over the same services the native API uses, not a fork — so behaviour cannot drift between the two.
+
+## Webhooks change shape
+
+This is the one part that is not a drop-in. Meta's webhook payload is deeply nested under `entry[].changes[].value`. LazyApp's is flat:
+
+<CodeGroup>
+```json Meta
+{
+  "entry": [
+    {
+      "changes": [
+        {
+          "value": {
+            "statuses": [
+              { "id": "wamid...", "status": "delivered", "recipient_id": "919812345670" }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+```json LazyApp
+{
+  "id": "evt_9f8b1c2d",
+  "type": "message.delivered",
+  "created_at": "2026-08-19T11:42:07+00:00",
+  "data": {
+    "message": {
+      "uuid": "1a2b3c4d",
+      "status": "delivered",
+      "to": "+919812345670",
+      "provider_message_id": "wamid..."
+    }
+  }
+}
+```
+</CodeGroup>
+
+Signature verification also differs: `X-LazyApp-Signature` over the raw body with your endpoint secret. See [verifying webhooks](/webhooks/verifying).
+
+## Suggested order
+
+<Steps>
+  <Step title="Point sends at the proxy">
+    Change the base URL and token in one place. Verify traffic flows with an `sk_test_`
+    key first.
+  </Step>
+  <Step title="Move webhooks to LazyApp">
+    Register an endpoint, verify signatures, and map the flat payload. This is the only
+    real code change.
+  </Step>
+  <Step title="Adopt what you could not do before">
+    Once traffic is flowing, the native API gives you things the Cloud API does not:
+    scheduling, [events](/sending/events) that decouple your code from template names,
+    [broadcasts](/sending/broadcasts) with opt-out and frequency caps enforced server-side,
+    and [Verify](/sending/verify) with fraud controls.
+  </Step>
+</Steps>
+
+<Note>
+  Keep using the proxy indefinitely if it suits you. It is a supported surface, not a
+  temporary shim.
+</Note>

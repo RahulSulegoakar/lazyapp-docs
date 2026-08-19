@@ -1,0 +1,64 @@
+---
+title: "Rate limits"
+description: "Two limits apply: ours and Meta's."
+---
+
+## LazyApp's limit
+
+Requests are limited per API key, 120 per minute by default. Every response tells you where you stand:
+
+```http
+X-RateLimit-Limit: 120
+X-RateLimit-Remaining: 117
+```
+
+Exceeding it returns `429`. Back off and retry — always with an
+[Idempotency-Key](/concepts/idempotency), so a retry cannot double-send.
+
+Requests with a missing or invalid key are limited separately, per IP, so failed authentication cannot consume a valid key's budget.
+
+Need a higher ceiling? Email [support@lazyapp.in](mailto:support@lazyapp.in) with your expected peak.
+
+## Meta's messaging limit
+
+Distinct, and usually the one that constrains you. Meta caps how many unique users a number may message in 24 hours, and raises the tier as you demonstrate good quality: 1K, 10K, 100K, then unlimited.
+
+LazyApp paces [broadcasts](/sending/broadcasts) to your current tier rather than firing everything and collecting failures. `GET /v1/capabilities` reports the tier and the number's quality rating.
+
+<Warning>
+  Quality is what moves the tier. Recipients marking you as spam or blocking you drives the
+  rating to `RED`, which can cut your limit. Sending fewer, more wanted messages raises the
+  ceiling faster than sending more.
+</Warning>
+
+## Writing a client that behaves
+
+<CodeGroup>
+```js Node
+async function send(body, attempt = 1) {
+  const response = await fetch('https://lazyapp.in/v1/messages', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.LAZYAPP_API_KEY}`,
+      'Content-Type': 'application/json',
+      // Same key across retries: that is what makes this safe.
+      'Idempotency-Key': body.idempotency_key,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const retryable = response.status === 429 || response.status >= 500;
+
+  if (retryable && attempt < 5) {
+    const wait = Math.min(2 ** attempt * 250, 8000) + Math.random() * 250;
+    await new Promise((r) => setTimeout(r, wait));
+
+    return send(body, attempt + 1);
+  }
+
+  return response;
+}
+```
+</CodeGroup>
+
+Add jitter. Without it, a fleet of workers that hit the limit together will retry together and hit it again.

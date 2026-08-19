@@ -1,0 +1,72 @@
+---
+title: "Capabilities"
+description: "Ask what a number supports instead of assuming."
+---
+
+Meta does not open every WhatsApp feature to every account. Calling, block lists and India payments are granted per business, sometimes per number, and sometimes only in certain countries.
+
+So LazyApp does not let you hard-code that knowledge. Ask:
+
+```bash
+curl https://lazyapp.in/v1/capabilities \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+```json
+{
+  "data": [
+    {
+      "uuid": "9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d",
+      "phone_number_id": "123456789012345",
+      "waba_id": "987654321098765",
+      "display_phone_number": "+91 98123 45670",
+      "verified_name": "Acme Retail",
+      "status": "connected",
+      "quality_rating": "GREEN",
+      "mode": "live",
+      "is_default": true,
+      "capabilities": {
+        "templates": true,
+        "media": true,
+        "interactive": true,
+        "flows": true,
+        "calling": false,
+        "block_users": false,
+        "groups": false
+      }
+    }
+  ]
+}
+```
+
+## Why a capability is false
+
+Two different reasons, and the distinction matters:
+
+- **Meta has not granted it to you.** Calling and block lists start `false` for everyone. When Meta approves your account, LazyApp turns them on per connection — no deploy on your side, no code change. Your integration should start working the moment the flag flips.
+- **It is not built yet.** Group messaging and commerce catalog sync are on the roadmap.
+
+Either way the correct client behaviour is the same: read the flag, and degrade gracefully when it is `false`.
+
+## Using it well
+
+<CodeGroup>
+```js Node
+const { data } = await lazyapp('/v1/capabilities');
+const number = data.find((c) => c.is_default);
+
+if (number.capabilities.calling) {
+  showCallButton();
+}
+```
+</CodeGroup>
+
+<Tip>
+  Cache the response for a few minutes rather than calling it per send. It changes rarely,
+  but do not cache it for the life of your process — the point is that it can change
+  without you deploying.
+</Tip>
+
+## Quality rating
+
+`quality_rating` is Meta's own signal — `GREEN`, `YELLOW` or `RED` — reflecting how recipients are reacting to your messages. A number sliding to `RED` risks having its messaging limit cut, so it is worth alerting on. You also receive `phone_number.quality_changed` [webhooks](/webhooks/events).

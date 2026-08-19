@@ -1,0 +1,65 @@
+---
+title: "Versioning"
+description: "What can change under you, and what cannot."
+---
+
+The current version is `v1`. Every response says so:
+
+```http
+X-LazyApp-Api-Version: v1
+```
+
+## Additive inside a version
+
+Within `v1` we only make changes that cannot break a working integration:
+
+- New fields on responses
+- New optional request fields
+- New endpoints
+- New values in an enum
+
+So write a client that tolerates all four. Specifically:
+
+<CardGroup cols={2}>
+  <Card title="Ignore unknown fields" icon="check">
+    Do not fail on a response field you have not seen. Strict schema validation that
+    rejects extra keys will break on our next additive change.
+  </Card>
+  <Card title="Do not assume enums are closed" icon="check">
+    New message types, statuses and webhook events get added. Handle the ones you care
+    about and pass the rest through rather than throwing.
+  </Card>
+</CardGroup>
+
+Anything that would break an integration — removing a field, renaming one, changing a type, tightening validation — goes in a new version.
+
+## Deprecation
+
+Before an endpoint goes away it starts announcing it, on its own responses, using RFC 8594 headers:
+
+```http
+Deprecation: 2026-09-01
+Sunset: 2027-01-01
+Link: <POST /v1/messages>; rel="successor-version"
+```
+
+| Header | Meaning |
+| --- | --- |
+| `Deprecation` | The date it became deprecated. Still works |
+| `Sunset` | The date it stops working |
+| `Link` | What to use instead |
+
+You learn this from the API itself, not only from a changelog you have to remember to read.
+
+<Tip>
+  Log any response carrying a `Deprecation` header and alert on it. That turns a migration
+  deadline into a ticket months ahead of the sunset, instead of an incident on the day.
+</Tip>
+
+## Webhook payload versions
+
+Each webhook endpoint pins its own payload version, sent as `X-LazyApp-Api-Version` on delivery. A new payload shape does not silently change what an existing endpoint receives — you move an endpoint up when you are ready.
+
+## Changelog
+
+See the [changelog](/reference/changelog) for what has shipped.

@@ -1,0 +1,78 @@
+---
+title: "Events"
+description: "Say what happened, not which template to send."
+---
+
+Sending a template couples your application to messaging: the template name, its language, the order of its placeholders. Change the copy and you deploy code.
+
+Events invert that. Your application says what happened:
+
+```bash
+curl https://lazyapp.in/v1/events \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: order-1042-shipped" \
+  -d '{
+    "type": "order.shipped",
+    "recipient": { "phone_number": "+919812345670" },
+    "properties": {
+      "order_id": "1042",
+      "eta": "Thursday",
+      "tracking_url": "https://acme.example/track/1042"
+    }
+  }'
+```
+
+LazyApp resolves the event to a template, maps the properties onto its placeholders, and sends. The mapping lives in the console, so marketing can change the wording — or the language, or the template entirely — without touching your code.
+
+## Addressing
+
+By phone number:
+
+```json
+{ "recipient": { "phone_number": "+919812345670" } }
+```
+
+Or by contact, when you already track people in LazyApp:
+
+```json
+{ "recipient": { "type": "contact_id", "value": "9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d" } }
+```
+
+## Event types
+
+`type` accepts the built-in library plus any event you define in your workspace. Defining your own also lets you declare a property schema, so a malformed event is rejected at the API rather than producing a message with an empty placeholder.
+
+## Idempotency
+
+Events are the natural place for permanent deduplication. The body-level `idempotency_key` is enforced by a unique constraint, so one business event produces one message — forever, not just for 24 hours:
+
+```json
+{ "idempotency_key": "order-1042-shipped" }
+```
+
+That matters when your own job runner might replay a task weeks later. See [idempotency](/concepts/idempotency) for how this differs from the header.
+
+## Replaying
+
+If an event failed for a transient reason, replay it:
+
+```bash
+curl -X POST https://lazyapp.in/v1/events/{uuid}/replay \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+The replay runs under a fresh idempotency key, so the original deduplication does not block it.
+
+## Ingesting from another system
+
+For a CRM or storefront that cannot be taught LazyApp's event shape, there is a generic ingress:
+
+```bash
+curl https://lazyapp.in/v1/integrations/shopify/events \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"topic": "fulfillment/create", "order": {"id": 1042}}'
+```
+
+The body is handed to your workflows as the trigger payload, filtered by source, so an automation can be authored against whatever that system already sends.

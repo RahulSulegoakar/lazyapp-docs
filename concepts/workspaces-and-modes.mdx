@@ -1,0 +1,60 @@
+---
+title: "Workspaces and modes"
+description: "How LazyApp scopes your data."
+---
+
+## Workspaces
+
+A **workspace** is the tenant: your team, its billing, its members, and all of its operational data — contacts, conversations, messages, templates, media, webhooks.
+
+You never pass a workspace id. Your API key belongs to exactly one workspace, and every query is scoped to it before it runs. There is no request you can construct that reads another workspace's data.
+
+## Modes
+
+Each workspace has two independent modes:
+
+<CardGroup cols={2}>
+  <Card title="test" icon="flask">
+    Nothing reaches a real phone. Sends are simulated end to end, including webhooks and
+    delivery statuses, so you can exercise the full lifecycle safely.
+  </Card>
+  <Card title="live" icon="tower-broadcast">
+    Real messages, real recipients, real cost.
+  </Card>
+</CardGroup>
+
+Mode is a property of the key, taken from its prefix (`sk_test_` / `sk_live_`). The two modes hold entirely separate data: a contact created in test does not exist in live.
+
+This means promoting an integration is a credential swap, not a code change.
+
+<Note>
+  In the console, mode is a toggle in the header rather than part of the URL, so a link
+  you paste to a colleague stays valid whichever mode they are in.
+</Note>
+
+## Connections
+
+Inside a workspace, a **connection** is one WhatsApp Business Account and its phone numbers. Credentials live on the connection, which is the real isolation boundary for sending.
+
+Most sends do not name a connection — LazyApp uses the workspace default. Name one explicitly when you have several:
+
+```json
+{
+  "type": "text",
+  "to": "+919812345670",
+  "body": "Hello.",
+  "phone_number_id": "123456789012345"
+}
+```
+
+Or by LazyApp's own identifier, which survives a number being re-provisioned at Meta:
+
+```json
+{ "connection_uuid": "9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d" }
+```
+
+List what you have with [`GET /v1/capabilities`](/concepts/capabilities).
+
+## Platform customers
+
+If you resell LazyApp, each of your customers gets their own isolated workspace with its own connections, keys and data. You manage them through the [Platform API](/platform/overview). Your customers integrate only with LazyApp — they never see Meta.

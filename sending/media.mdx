@@ -1,0 +1,77 @@
+---
+title: "Media"
+description: "Upload once, send many times."
+---
+
+Media is uploaded before it is sent, and the resulting id can be reused across messages.
+
+## Uploading
+
+<CodeGroup>
+```bash Multipart
+curl https://lazyapp.in/v1/media \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -F "file=@receipt.pdf" \
+  -F "retention=managed"
+```
+
+```bash From a URL
+curl https://lazyapp.in/v1/media/url \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://acme.example/receipts/1042.pdf", "filename": "receipt.pdf"}'
+```
+</CodeGroup>
+
+The URL form is usually what you want: LazyApp fetches the file and uploads it to Meta, so you do not proxy bytes through your own servers.
+
+Every upload is virus-scanned and MIME-checked, images are optimised, and a thumbnail is generated.
+
+## Meta expires media after about 30 days
+
+This catches people out. Meta's copy of an uploaded file is temporary — roughly 30 days — so a `media_id` you stored last quarter will not send today.
+
+`provider_expires_at` tells you when Meta's copy goes. `retention` decides whether LazyApp keeps its own:
+
+| Retention | Behaviour |
+| --- | --- |
+| `provider_only` | Nothing kept by LazyApp. Cheapest, and gone when Meta's copy expires |
+| `managed` | LazyApp keeps a copy for a configured window and can re-upload |
+| `customer_storage` | Stored in your own object storage |
+| `no_retention` | Bytes discarded immediately after sending |
+
+For anything you will resend — a catalogue, a logo, a standard form — use `managed`.
+
+## Sending it
+
+```json
+{
+  "type": "document",
+  "to": "+919812345670",
+  "media_id": "1234567890",
+  "filename": "receipt-1042.pdf",
+  "caption": "Your receipt"
+}
+```
+
+## Access history
+
+Every read, upload and delete is recorded with who did it, when, and from which IP:
+
+```json
+{
+  "uuid": "9f8b1c2d-...",
+  "access_count": 3,
+  "last_accessed_at": "2026-08-19T11:42:07+00:00",
+  "access_history": [
+    { "action": "downloaded", "actor": "Asha Rao", "ip": "203.0.113.7", "at": "2026-08-19T11:42:07+00:00" },
+    { "action": "uploaded", "actor": "API key: Fulfilment", "ip": "203.0.113.7", "at": "2026-08-18T09:10:00+00:00" }
+  ]
+}
+```
+
+The history outlives the asset, so deleting media does not erase the record of who deleted it — which is the entry you most want when someone asks.
+
+## Inbound media
+
+When a contact sends you a file, the `message.received` webhook carries a media id. LazyApp downloads and retains it according to your retention policy, so you are not racing Meta's expiry to fetch it.

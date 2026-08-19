@@ -1,0 +1,63 @@
+---
+title: "Broadcasts"
+description: "Template sends to many contacts, with compliance built in."
+---
+
+A broadcast sends one approved template to a segment or an explicit list of numbers.
+
+```bash
+curl https://lazyapp.in/v1/broadcasts \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "August sale",
+    "template_name": "seasonal_offer",
+    "language": "en",
+    "contact_segment_id": 12,
+    "schedule_at": "2026-08-20T10:00:00+05:30",
+    "quiet_hours": { "start": "21:00", "end": "09:00", "timezone": "Asia/Kolkata" },
+    "frequency_cap_days": 7,
+    "start": false
+  }'
+```
+
+Target either `contact_segment_id` or `phone_numbers` (up to 50,000).
+
+## Compliance is enforced at send time, not create time
+
+This is deliberate. A broadcast created on Monday and sent on Friday respects the opt-outs that happened on Wednesday.
+
+<CardGroup cols={2}>
+  <Card title="Opt-outs" icon="ban">
+    Suppressed contacts are excluded. There is no override.
+  </Card>
+  <Card title="Frequency caps" icon="calendar">
+    `frequency_cap_days` skips anyone who already received a marketing message inside that
+    window.
+  </Card>
+  <Card title="Quiet hours" icon="moon">
+    Sending pauses during quiet hours in the contact's timezone and resumes after.
+  </Card>
+  <Card title="Messaging limits" icon="gauge">
+    Sends are paced to your number's Meta messaging tier rather than being rejected in bulk.
+  </Card>
+</CardGroup>
+
+Excluded recipients are recorded with a reason, so you can explain exactly why someone did not receive a campaign.
+
+## Starting and watching
+
+Create with `"start": true`, or start later:
+
+```bash
+curl -X POST https://lazyapp.in/v1/broadcasts/{uuid}/start \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+`GET /v1/broadcasts/{uuid}` returns live `stats`. You also receive `campaign.started`, `campaign.completed` and `campaign.failed` [webhooks](/webhooks/events).
+
+<Note>
+  Marketing templates need an opt-in you can evidence. Broadcasting to a purchased list is
+  the fastest route to having your number's quality rating cut and your messaging limit
+  reduced.
+</Note>

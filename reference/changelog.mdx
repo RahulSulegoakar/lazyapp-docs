@@ -1,0 +1,30 @@
+---
+title: "Changelog"
+description: "What shipped, newest first."
+---
+
+<Update label="2026-08-19" description="v1">
+
+**Idempotency on every write.** `Idempotency-Key` is now honoured on all `/v1` write endpoints, not just messages and events. A retry replays the recorded response; reusing a key with a different body is refused. See [idempotency](/concepts/idempotency).
+
+**Cursor pagination everywhere.** Broadcasts, events, media, templates, flows, scheduled messages and webhook endpoints now paginate like contacts and conversations, so a caller with more than one page can reach all of it.
+
+**Media access history.** `GET /v1/media/{media}` returns `access_history` — who read, uploaded or deleted a file, when, and from where. The history outlives the asset.
+
+**Events accept workspace-defined types and contact recipients.** `type` now validates against the event definitions in your workspace, and `recipient.type: contact_id` addresses a contact directly.
+
+**`contact_information_request`.** Ask a contact for a phone number inside a conversation and have the reply attach to their record.
+
+**Added `GET /v1/capabilities`** so clients can check what a connection supports instead of hard-coding assumptions.
+
+**Scheduled sending.** `send_at` and `ttl_seconds` on `POST /v1/messages`, plus `GET` and `DELETE /v1/messages/scheduled`.
+
+**Added** `/v1/templates`, `/v1/contacts`, `/v1/conversations`, `/v1/workflows`, `/v1/broadcasts`, `/v1/webhooks` and `/v1/flows`.
+
+**Added the Meta-compatible proxy** at `/meta/whatsapp/{version}/...`. See [migrating](/migrating/from-cloud-api).
+
+**Added `POST /v1/integrations/{source}/events`** for external systems.
+
+**Every response now carries** `X-RateLimit-*` and `X-LazyApp-Api-Version`.
+
+</Update>

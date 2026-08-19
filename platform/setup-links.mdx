@@ -1,0 +1,76 @@
+---
+title: "Setup links"
+description: "Let a customer connect their own WhatsApp account."
+---
+
+A setup link is a one-time URL your customer opens to connect their WhatsApp Business Account through Meta's Embedded Signup. Their credentials go to Meta, never through your product.
+
+```bash
+curl https://lazyapp.in/v1/platform/setup-links \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "cus_9f8b1c2d",
+    "expires_in_days": 7,
+    "use_policy": "single",
+    "allowed_connection_type": "new",
+    "redirect_url": "https://yourapp.example/settings/whatsapp?connected=1",
+    "success_webhook_url": "https://yourapp.example/hooks/whatsapp-connected",
+    "failure_webhook_url": "https://yourapp.example/hooks/whatsapp-failed"
+  }'
+```
+
+```json
+{
+  "data": {
+    "id": "set_4a6b8c7d",
+    "customer_id": "cus_9f8b1c2d",
+    "url": "https://lazyapp.in/connect/set_4a6b8c7d...",
+    "expires_at": "2026-08-26T11:42:07+00:00",
+    "use_policy": "single",
+    "use_count": 0,
+    "usable": true
+  }
+}
+```
+
+Hand `url` to your customer. Email it, or put it behind a **Connect WhatsApp** button in your settings screen.
+
+## Options
+
+| Field | Effect |
+| --- | --- |
+| `expires_in_days` | 1–90. Shorter is safer |
+| `use_policy` | `single` burns after one success. `multi` allows `max_uses` |
+| `allowed_connection_type` | `new` for a fresh account, `reconnect` to repair an existing one, `either` |
+| `redirect_url` | Where the customer lands afterwards |
+| `locale` | Renders the connect screen in their language |
+| `success_webhook_url` / `failure_webhook_url` | Per-link callbacks, in addition to your workspace webhooks |
+
+## Do not trust the redirect
+
+The `redirect_url` fires in the customer's browser. It can be reached without the connection having succeeded, and it will not fire at all if they close the tab after a successful connect.
+
+Treat it as UX only. Confirm from the server side:
+
+<CardGroup cols={2}>
+  <Card title="customer.connected" icon="circle-check">
+    The connection is live and ready to send.
+  </Card>
+  <Card title="setup_link.failed" icon="circle-xmark">
+    The attempt failed. Show your customer what to fix and issue a new link.
+  </Card>
+</CardGroup>
+
+## Revoking
+
+```bash
+curl -X DELETE https://lazyapp.in/v1/platform/setup-links/{setup_link} \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+The URL stops working immediately. `GET /v1/platform/setup-links` lists all links with `usable` telling you whether each still works, so a support agent can see at a glance whether a customer's link expired.
+
+## After connecting
+
+Check what their number actually supports before enabling features in your UI — see [capabilities](/concepts/capabilities). A new connection may not have calling or block lists, and that is Meta's decision rather than yours.

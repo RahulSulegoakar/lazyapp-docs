@@ -1,0 +1,95 @@
+---
+title: "Verify"
+description: "One-time passcodes over WhatsApp."
+---
+
+WhatsApp OTP delivery is cheaper and more reliable than SMS in many markets. LazyApp handles generation, hashing, delivery, verification and abuse controls.
+
+## Managed mode
+
+The default. LazyApp generates the code, sends it, and verifies it later. You never see or store it.
+
+<Steps>
+  <Step title="Send">
+    ```bash
+    curl https://lazyapp.in/v1/otp \
+      -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{"to": "+919812345670"}'
+    ```
+
+    ```json
+    {
+      "id": "9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d",
+      "to": "+919812345670",
+      "status": "sent",
+      "expires_at": "2026-08-19T11:52:07+00:00",
+      "mode": "managed"
+    }
+    ```
+
+    Keep the `id`.
+  </Step>
+
+  <Step title="Verify">
+    ```bash
+    curl https://lazyapp.in/v1/otp/verify \
+      -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{"id": "9f8b1c2d-...", "code": "482913"}'
+    ```
+
+    ```json
+    { "id": "9f8b1c2d-...", "status": "verified", "verified_at": "2026-08-19T11:44:20+00:00" }
+    ```
+
+    A wrong code returns `422`. A verified challenge cannot be verified twice.
+  </Step>
+</Steps>
+
+You can verify by `to` instead of `id` if carrying the id through your flow is awkward.
+
+## Delivery-only mode
+
+When your existing auth system already generates codes, LazyApp just delivers:
+
+```json
+{
+  "to": "+919812345670",
+  "mode": "delivery_only",
+  "code": "482913"
+}
+```
+
+You verify it yourself. LazyApp does not retain the code.
+
+## What LazyApp enforces
+
+<CardGroup cols={2}>
+  <Card title="Never stored in plaintext" icon="lock">
+    Codes are hashed with a keyed mechanism at creation. There is nothing to leak.
+  </Card>
+  <Card title="Redacted everywhere" icon="eye-slash">
+    Codes are stripped from request logs and from webhook payloads, so an OTP cannot leak
+    to your own logging pipeline.
+  </Card>
+  <Card title="Attempt limits" icon="shield">
+    Wrong guesses are capped per challenge, and a verified challenge cannot be replayed.
+  </Card>
+  <Card title="Abuse controls" icon="user-shield">
+    Per-recipient daily caps, per-team and per-IP rate limits, and a resend delay to stop
+    someone using your account to spam a number.
+  </Card>
+</CardGroup>
+
+## Test mode
+
+With an `sk_test_` key, nothing reaches a phone and a fixed development code is used, so automated tests can complete the whole flow.
+
+## Templates
+
+OTPs need an approved `AUTHENTICATION` template. Pass `template_name` to choose one, or let LazyApp use the workspace default. Authentication templates support one-tap autofill and copy-code buttons, which materially improve completion rates — worth setting up rather than sending a plain code.
+
+## Webhooks
+
+You receive `otp.requested`, `otp.verified` and `otp.failed`. Codes are redacted from all three.

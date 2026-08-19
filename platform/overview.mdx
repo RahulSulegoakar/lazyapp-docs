@@ -1,0 +1,82 @@
+---
+title: "Platforms"
+description: "Offer WhatsApp to your own customers."
+---
+
+If you build software other businesses use, you can offer WhatsApp inside your product without any of them dealing with Meta.
+
+Each of your customers gets an isolated LazyApp workspace: their own connection, phone numbers, templates, contacts and data. They integrate only with your product. You integrate only with LazyApp.
+
+## The shape of it
+
+<Steps>
+  <Step title="Create a customer">
+    ```bash
+    curl https://lazyapp.in/v1/platform/customers \
+      -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "Acme Retail",
+        "external_id": "acct_8812",
+        "billing_mode": "postpaid",
+        "markup_bps": 1500
+      }'
+    ```
+
+    `external_id` is your own account id, so you never need a mapping table.
+    `markup_bps` is your margin in basis points — 1500 is 15%.
+  </Step>
+
+  <Step title="Send them a setup link">
+    A one-time URL where they connect their WhatsApp account through Meta's Embedded
+    Signup. You never handle their credentials. See [setup links](/platform/setup-links).
+  </Step>
+
+  <Step title="Wait for customer.connected">
+    Onboarding is asynchronous and can fail on Meta's side. Handle both
+    `customer.connected` and `setup_link.failed` [webhooks](/webhooks/events) rather than
+    assuming a redirect means success.
+  </Step>
+
+  <Step title="Act on their behalf">
+    Mint a customer-scoped API key:
+
+    ```bash
+    curl https://lazyapp.in/v1/platform/customers/{customer}/api-keys \
+      -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{"name": "Acme server", "scopes": ["messages:send", "messages:read"]}'
+    ```
+
+    That key can only see that customer's workspace. Every other `/v1` endpoint then
+    behaves exactly as documented, scoped to them.
+  </Step>
+</Steps>
+
+## Billing modes
+
+| Mode | Meaning |
+| --- | --- |
+| `inherit` | Billed on your account, as your own usage |
+| `prepaid` | Draws down a wallet balance. Sending stops at zero |
+| `postpaid` | Accrues and is invoiced |
+
+Set `spending_limit_cents` to cap a customer, and `usage_alert_cents` to receive a `customer.usage_alert` webhook before they hit it. Read consumption with [`GET /v1/platform/customers/{customer}/usage`](/api-reference/platform/retrieve-customer-usage).
+
+## Lifecycle
+
+<CardGroup cols={2}>
+  <Card title="suspend / restore" icon="pause">
+    Blocks sending immediately, keeps everything. For non-payment or abuse. Reversible.
+  </Card>
+  <Card title="archive / restore" icon="box-archive">
+    Retires a workspace you may want back. Reversible.
+  </Card>
+  <Card title="delete" icon="trash">
+    Erases the workspace. Irreversible — prefer archive.
+  </Card>
+</CardGroup>
+
+## Embedding UI
+
+Rather than rebuilding an inbox, drop LazyApp components into your product with short-lived, origin-locked tokens. See [embedded components](/platform/embedded-components).

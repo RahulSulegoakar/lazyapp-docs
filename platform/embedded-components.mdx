@@ -1,0 +1,69 @@
+---
+title: "Embedded components"
+description: "Put LazyApp UI inside your product."
+---
+
+Rather than rebuilding an inbox, embed one. LazyApp serves iframe components scoped to a single customer.
+
+| Component | Shows |
+| --- | --- |
+| `connection` | Connect and manage their WhatsApp account |
+| `inbox` | Conversations, with replies |
+| `messages` | Message history, read-only |
+| `templates` | Create and track templates |
+| `usage` | Their consumption and cost |
+
+## Minting a token
+
+Do this server-side. Your API key must never reach the browser.
+
+```bash
+curl https://lazyapp.in/v1/platform/embed-tokens \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "cus_9f8b1c2d",
+    "component": "inbox",
+    "expires_in_minutes": 60,
+    "origin_allowlist": ["https://yourapp.example"],
+    "locale": "en"
+  }'
+```
+
+```json
+{
+  "data": {
+    "id": "emb_1a2b3c4d",
+    "component": "inbox",
+    "url": "https://lazyapp.in/embed/inbox?token=...",
+    "token": "...",
+    "expires_at": "2026-08-19T12:42:07+00:00"
+  }
+}
+```
+
+Then render it:
+
+```html
+<iframe
+  src="https://lazyapp.in/embed/inbox?token=..."
+  style="width: 100%; height: 720px; border: 0"
+  allow="clipboard-write"
+></iframe>
+```
+
+## What the token can do
+
+Deliberately very little:
+
+- **One component.** An `inbox` token cannot open `usage`.
+- **One customer.** It cannot address another workspace.
+- **Your origins only.** `origin_allowlist` means a leaked token will not render on someone else's site.
+- **Short-lived.** 5 minutes to 7 days. Mint per page load rather than storing one.
+- **Revocable.** `DELETE /v1/platform/embed-tokens/{id}` kills it before expiry.
+
+Add `phone_number_id` to scope a component to one number when a customer has several.
+
+## Theme and locale
+
+Pass `locale` to render in your customer's language. Components follow the viewer's light or dark preference, so they sit inside your product without a jarring switch.

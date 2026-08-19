@@ -1,0 +1,94 @@
+---
+title: "Errors"
+description: "Status codes, shapes and what to retry."
+---
+
+Every failure returns JSON with a `message`:
+
+```json
+{ "message": "Template not found or not approved." }
+```
+
+Validation failures add a per-field `errors` map:
+
+```json
+{
+  "message": "The given data was invalid.",
+  "errors": {
+    "to": ["The to field format is invalid."],
+    "category": ["The selected category is invalid."]
+  }
+}
+```
+
+## Status codes
+
+| Code | Meaning | Retry? |
+| --- | --- | --- |
+| `400` | Malformed request | No — fix the request |
+| `401` | Missing or invalid API key | No |
+| `402` | Spending limit or wallet balance exhausted | After topping up |
+| `403` | Key lacks the scope, or is restricted from this number | No |
+| `404` | Not found in this workspace | No |
+| `409` | An idempotent request with this key is still running | Yes, after a pause |
+| `422` | Validation failed, or the provider rejected it | Only after changing the request |
+| `429` | Rate limited | Yes, after the window |
+| `500` | Something broke on our side | Yes, with backoff |
+| `502` / `503` | Provider unreachable | Yes, with backoff |
+
+## Which failures are worth retrying
+
+LazyApp already retries retryable provider failures internally, and does not retry policy or invalid-recipient failures — retrying those would burn quota to get the same answer.
+
+Apply the same rule to your own client:
+
+<CardGroup cols={2}>
+  <Card title="Retry with backoff" icon="rotate">
+    `409`, `429`, `500`, `502`, `503`, and network timeouts. Always with an
+    [Idempotency-Key](/concepts/idempotency) so a retry cannot double-send.
+  </Card>
+  <Card title="Do not retry" icon="ban">
+    `400`, `401`, `403`, `404`, `422`. The same request will fail the same way. Surface it
+    and fix the cause.
+  </Card>
+</CardGroup>
+
+## A send can fail after it is accepted
+
+`POST /v1/messages` returning `201` means LazyApp accepted the message and the provider took it. Delivery is asynchronous: the recipient's phone may be off, the number may not exist on WhatsApp, or the user may have blocked you.
+
+So treat `201` as *accepted*, not *delivered*, and get the outcome from webhooks — `message.delivered`, `message.read`, `message.failed`. See [webhook events](/webhooks/events).
+
+When a send fails immediately and synchronously, you get `422` with the provider's reason:
+
+```json
+{ "message": "Message failed to send: recipient is not a valid WhatsApp user." }
+```
+
+## Common causes
+
+<AccordionGroup>
+  <Accordion title="Free-form message outside the 24-hour window">
+    You can only send free-form content within 24 hours of the contact's last message.
+    Outside it, send an approved [template](/sending/templates). This is enforced
+    server-side, not just in the UI.
+  </Accordion>
+  <Accordion title="Template not approved">
+    A template must be `approved` by Meta before it can be sent. Check status with
+    `GET /v1/templates`, and remember approval can be revoked later — a template can move
+    to `paused` or `disabled` on quality grounds.
+  </Accordion>
+  <Accordion title="Capability not enabled">
+    Calling, block lists and India payments are gated by Meta per account. Check
+    [`GET /v1/capabilities`](/concepts/capabilities) instead of assuming.
+  </Accordion>
+  <Accordion title="Contact suppressed">
+    A contact who opted out is excluded from marketing sends. That is deliberate; do not
+    work around it.
+  </Accordion>
+</AccordionGroup>
+
+## Getting help
+
+Quote the `X-Request-Id` from the failing response in your email to
+[support@lazyapp.in](mailto:support@lazyapp.in). It identifies the exact request, including the provider call it made and the error the provider returned.

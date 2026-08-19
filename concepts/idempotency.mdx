@@ -1,0 +1,84 @@
+---
+title: "Idempotency"
+description: "Make every write safe to retry."
+---
+
+A request that times out leaves you guessing: did it land? Retrying might send a second message or create a second contact. Send an `Idempotency-Key` and the guess goes away.
+
+```bash
+curl https://lazyapp.in/v1/contacts \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: signup-8f21c0" \
+  -d '{"phone_number": "+919812345670", "username": "asha"}'
+```
+
+Retry that exact request and you get the original response back, with `Idempotency-Replayed: true`. One contact exists, not two.
+
+## Where it works
+
+Every write endpoint — every `POST`, `PATCH` and `DELETE` under `/v1`. The header is optional; omit it and the endpoint behaves exactly as it always did.
+
+Reads ignore it.
+
+## How to choose a key
+
+Derive it from the thing you are acting on, not from the attempt:
+
+<CodeGroup>
+```text Good
+order-1042-shipped
+signup-8f21c0
+invoice-2026-08-payment-reminder
+```
+
+```text Bad
+2026-08-19T11:42:07Z
+a-fresh-uuid-per-attempt
+```
+</CodeGroup>
+
+A key generated per attempt protects you from nothing, because the retry carries a different one.
+
+Keys are scoped to your workspace and mode, so they cannot collide with another customer's. Maximum 255 characters.
+
+## What each outcome means
+
+<AccordionGroup>
+  <Accordion title="First attempt — the request runs">
+    The key is reserved *before* any work happens, then the response is recorded against it.
+  </Accordion>
+  <Accordion title="Retry, same body — the response is replayed">
+    You get the original status code and body, plus `Idempotency-Replayed: true`. No
+    second message, no second charge.
+  </Accordion>
+  <Accordion title="Retry, different body — 422">
+    ```json
+    { "message": "This Idempotency-Key was already used with a different request body." }
+    ```
+    A reused key with changed content is a bug on the caller's side, so LazyApp refuses
+    rather than guessing which one you meant.
+  </Accordion>
+  <Accordion title="Concurrent retry — 409">
+    ```json
+    { "message": "A request with this Idempotency-Key is still in progress." }
+    ```
+    The first attempt has not responded yet. Wait and retry; do not treat it as a failure.
+  </Accordion>
+</AccordionGroup>
+
+## Server errors release the key
+
+A `5xx` is not recorded. The key is freed so your retry actually runs — which is what you want, because the original attempt may never have completed.
+
+Responses that are not JSON, such as a media download, are also not recorded.
+
+## How long a key lasts
+
+24 hours from first use. After that the key is forgotten and reusing it starts a fresh request.
+
+## Message-level deduplication
+
+`POST /v1/messages` and `POST /v1/events` also accept an `idempotency_key` **in the body**. That is an older, narrower guarantee: it deduplicates the message or event itself in the database, and it is enforced permanently rather than for 24 hours.
+
+The two coexist. Use the header for transport safety; use the body field when you need a permanent guarantee that one business event produces one message, forever.
