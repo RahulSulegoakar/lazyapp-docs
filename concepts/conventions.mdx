@@ -52,7 +52,7 @@ Messages carry the `request_id` of the call that created them, so a delivery rep
 
 ## Pagination
 
-List endpoints use [cursor pagination](/concepts/pagination). No endpoint returns an unbounded array.
+Most list endpoints use [cursor pagination](/concepts/pagination); three small, bounded ones use page numbers or a plain capped list. No endpoint returns an unbounded array.
 
 ## Errors
 

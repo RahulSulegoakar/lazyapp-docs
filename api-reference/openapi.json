@@ -585,15 +585,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Cancelled"
                 }
               }
             }
@@ -748,17 +740,22 @@
         "summary": "Create or update a contact",
         "description": "Upserts on whichever identifier you supply: phone number, BSUID or external id. At least one is required.\n\n**Required scope:** `messages:send`",
         "responses": {
-          "201": {
-            "description": "Created or updated.",
+          "200": {
+            "description": "Updated an existing contact.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Contact"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Contact"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created a new contact.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Contact"
                 }
               }
             }
@@ -876,12 +873,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Contact"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Contact"
                 }
               }
             }
@@ -951,12 +943,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Contact"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Contact"
                 }
               }
             }
@@ -1068,16 +1055,11 @@
         "description": "Folds the `source` contact into this one. Merging is deliberate and irreversible: identifiers, conversations and consent move across.\n\n**Required scope:** `messages:send`",
         "responses": {
           "200": {
-            "description": "Merged.",
+            "description": "Merged. Returns the surviving contact.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Contact"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Contact"
                 }
               }
             }
@@ -1094,6 +1076,16 @@
           },
           "403": {
             "description": "The key lacks the required scope, or is restricted from this phone number.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found in this workspace.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1150,13 +1142,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "source_uuid": {
+                  "source": {
                     "type": "string",
-                    "description": "The contact to absorb."
+                    "description": "The contact to absorb, by uuid or phone number."
                   }
                 },
                 "required": [
-                  "source_uuid"
+                  "source"
                 ]
               }
             }
@@ -1177,12 +1169,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Contact"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Suppressed"
                 }
               }
             }
@@ -1207,12 +1194,12 @@
               }
             }
           },
-          "422": {
-            "description": "Validation failed.",
+          "404": {
+            "description": "Not found in this workspace.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ValidationError"
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -1255,13 +1242,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "purpose": {
+                  "scope": {
                     "type": "string",
-                    "description": "What they opted out of, e.g. `marketing`."
+                    "description": "What they opted out of. Defaults to `marketing`."
                   },
-                  "source": {
+                  "reason": {
                     "type": "string",
-                    "nullable": true
+                    "description": "Free text. Defaults to `api_suppression`."
                   }
                 }
               }
@@ -1372,12 +1359,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Conversation"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Conversation"
                 }
               }
             }
@@ -1634,12 +1616,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Template"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Template"
                 }
               }
             }
@@ -1821,22 +1798,11 @@
         "description": "Pulls the current template list and statuses from Meta into LazyApp. Use after editing templates in Business Manager.\n\n**Required scope:** `templates:write`",
         "responses": {
           "200": {
-            "description": "Sync result.",
+            "description": "How many templates were synced.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "synced": {
-                      "type": "integer"
-                    },
-                    "created": {
-                      "type": "integer"
-                    },
-                    "updated": {
-                      "type": "integer"
-                    }
-                  }
+                  "$ref": "#/components/schemas/TemplateSynced"
                 }
               }
             }
@@ -1908,12 +1874,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Template"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Template"
                 }
               }
             }
@@ -2135,12 +2096,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/MediaAsset"
-                    }
-                  }
+                  "$ref": "#/components/schemas/MediaAsset"
                 }
               }
             }
@@ -2248,12 +2204,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/MediaAsset"
-                    }
-                  }
+                  "$ref": "#/components/schemas/MediaAsset"
                 }
               }
             }
@@ -2584,12 +2535,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Broadcast"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Broadcast"
                 }
               }
             }
@@ -2738,12 +2684,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Broadcast"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Broadcast"
                 }
               }
             }
@@ -2810,17 +2751,12 @@
         "summary": "Start a broadcast",
         "description": "Begins sending a draft or scheduled broadcast.\n\n**Required scope:** `messages:send`",
         "responses": {
-          "200": {
+          "202": {
             "description": "Started.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Broadcast"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Broadcast"
                 }
               }
             }
@@ -3001,16 +2937,11 @@
         "description": "Events map to templates, so your application can say *what happened* and let LazyApp decide which template to send. `type` accepts the built-in library plus any event you have defined in the workspace.\n\nAddress the recipient with `recipient.phone_number`, or set `recipient.type` to `contact_id` and put the contact uuid in `recipient.value`.\n\n**Required scope:** `messages:send`",
         "responses": {
           "201": {
-            "description": "Accepted.",
+            "description": "Accepted. Returns the message the event produced.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Event"
-                    }
-                  }
+                  "$ref": "#/components/schemas/EventAccepted"
                 }
               }
             }
@@ -3133,12 +3064,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Event"
-                    }
-                  }
+                  "$ref": "#/components/schemas/EventAccepted"
                 }
               }
             }
@@ -3409,12 +3335,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Flow"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Flow"
                 }
               }
             }
@@ -3523,16 +3444,11 @@
         "description": "By uuid.\n\n**Required scope:** `flows:write`",
         "responses": {
           "200": {
-            "description": "The flow.",
+            "description": "The flow, including its Flow JSON.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Flow"
-                    }
-                  }
+                  "$ref": "#/components/schemas/FlowDetail"
                 }
               }
             }
@@ -3604,12 +3520,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Flow"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Flow"
                 }
               }
             }
@@ -3700,12 +3611,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Flow"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Flow"
                 }
               }
             }
@@ -4052,20 +3958,11 @@
         "description": "Registers an https endpoint. Leave `subscribed_events` empty to receive every event. The signing secret is returned once, on creation.\n\n**Required scope:** `webhooks:write`",
         "responses": {
           "201": {
-            "description": "Created.",
+            "description": "Created. The signing secret is returned once, here.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/WebhookEndpoint"
-                    },
-                    "secret": {
-                      "type": "string",
-                      "description": "Shown once. Use it to verify X-LazyApp-Signature."
-                    }
-                  }
+                  "$ref": "#/components/schemas/WebhookEndpointCreated"
                 }
               }
             }
@@ -4394,14 +4291,14 @@
           "Workflows"
         ],
         "summary": "List workflows",
-        "description": "Automations defined in the workspace.\n\n**Required scope:** `messages:read`",
+        "description": "Automations defined in the workspace. Unlike other lists this one is capped by `limit` rather than cursor-paginated, because a workspace has few workflows.\n\n**Required scope:** `messages:read`",
         "responses": {
           "200": {
-            "description": "A page of workflows.",
+            "description": "Up to `limit` workflows.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkflowList"
+                  "$ref": "#/components/schemas/WorkflowListPlain"
                 }
               }
             }
@@ -4460,9 +4357,8 @@
             }
           },
           {
-            "name": "cursor",
+            "name": "status",
             "in": "query",
-            "description": "Opaque cursor from a previous response's `next_cursor`.",
             "schema": {
               "type": "string"
             }
@@ -4483,12 +4379,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/Workflow"
-                    }
-                  }
+                  "$ref": "#/components/schemas/Workflow"
                 }
               }
             }
@@ -4658,12 +4549,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "$ref": "#/components/schemas/WorkflowExecution"
-                    }
-                  }
+                  "$ref": "#/components/schemas/WorkflowTriggered"
                 }
               }
             }
@@ -5457,15 +5343,8 @@
         "summary": "Delete a customer",
         "description": "Irreversible. Prefer archiving unless you must erase the workspace.\n\n**Required scope:** `customers:write`",
         "responses": {
-          "200": {
-            "description": "Deleted.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Deleted"
-                }
-              }
-            }
+          "204": {
+            "description": "Deleted. No content."
           },
           "401": {
             "description": "Missing or invalid API key.",
@@ -6014,10 +5893,10 @@
           "Platform"
         ],
         "summary": "List setup links",
-        "description": "Including expired and revoked links.\n\n**Required scope:** `customers:write`",
+        "description": "Including expired and revoked links. Page-numbered, like the customer list.\n\n**Required scope:** `customers:write`",
         "responses": {
           "200": {
-            "description": "Setup links.",
+            "description": "A page of setup links.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6066,7 +5945,16 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
       },
       "post": {
         "tags": [
@@ -6208,15 +6096,8 @@
         "summary": "Revoke a setup link",
         "description": "The URL stops working immediately.\n\n**Required scope:** `customers:write`",
         "responses": {
-          "200": {
-            "description": "Revoked.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Deleted"
-                }
-              }
-            }
+          "204": {
+            "description": "Revoked. No content."
           },
           "401": {
             "description": "Missing or invalid API key.",
@@ -6402,15 +6283,8 @@
         "summary": "Revoke an embed token",
         "description": "Invalidates it before its expiry.\n\n**Required scope:** `customers:write`",
         "responses": {
-          "200": {
-            "description": "Revoked.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Deleted"
-                }
-              }
-            }
+          "204": {
+            "description": "Revoked. No content."
           },
           "401": {
             "description": "Missing or invalid API key.",
@@ -7892,6 +7766,10 @@
           },
           "usable": {
             "type": "boolean"
+          },
+          "token": {
+            "type": "string",
+            "description": "Returned only on creation, inside `url`."
           }
         }
       },
@@ -8229,22 +8107,6 @@
           }
         }
       },
-      "WorkflowList": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Workflow"
-            }
-          },
-          "next_cursor": {
-            "type": "string",
-            "nullable": true,
-            "description": "Pass back as `cursor` to fetch the next page. `null` on the last page."
-          }
-        }
-      },
       "WebhookDeliveryList": {
         "type": "object",
         "properties": {
@@ -8284,22 +8146,6 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/FlowResponse"
-            }
-          },
-          "next_cursor": {
-            "type": "string",
-            "nullable": true,
-            "description": "Pass back as `cursor` to fetch the next page. `null` on the last page."
-          }
-        }
-      },
-      "SetupLinkList": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SetupLink"
             }
           },
           "next_cursor": {
@@ -8361,6 +8207,28 @@
           }
         }
       },
+      "SetupLinkList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SetupLink"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "current_page": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
       "EmbedTokenEnvelope": {
         "type": "object",
         "properties": {
@@ -8382,6 +8250,251 @@
         "properties": {
           "deleted": {
             "type": "boolean"
+          }
+        }
+      },
+      "Cancelled": {
+        "type": "object",
+        "properties": {
+          "cancelled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Suppressed": {
+        "type": "object",
+        "properties": {
+          "suppressed": {
+            "type": "boolean"
+          },
+          "scope": {
+            "type": "string"
+          }
+        }
+      },
+      "TemplateSynced": {
+        "type": "object",
+        "properties": {
+          "synced": {
+            "type": "integer"
+          }
+        }
+      },
+      "EventAccepted": {
+        "type": "object",
+        "properties": {
+          "uuid": {
+            "type": "string",
+            "description": "The message the event produced."
+          },
+          "event_uuid": {
+            "type": "string",
+            "nullable": true,
+            "description": "The recorded business event."
+          },
+          "request_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "provider_message_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "error_message": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "WorkflowTriggered": {
+        "type": "object",
+        "properties": {
+          "execution": {
+            "type": "object",
+            "properties": {
+              "uuid": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "started_at": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              }
+            }
+          }
+        }
+      },
+      "FlowDetail": {
+        "type": "object",
+        "properties": {
+          "uuid": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "provider_flow_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "data_endpoint_uri": {
+            "type": "string",
+            "nullable": true
+          },
+          "endpoint_health": {
+            "type": "object",
+            "properties": {}
+          },
+          "flow_json": {
+            "description": "The Flow JSON document."
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "WebhookEndpointCreated": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "url": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "subscribed_events": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "message.received",
+                "message.queued",
+                "message.sent",
+                "message.delivered",
+                "message.read",
+                "message.played",
+                "message.failed",
+                "template.pending",
+                "template.approved",
+                "template.rejected",
+                "template.paused",
+                "template.disabled",
+                "template.category_changed",
+                "otp.requested",
+                "otp.verified",
+                "otp.failed",
+                "contact.updated",
+                "contact.opted_in",
+                "contact.opted_out",
+                "phone_number.updated",
+                "phone_number.quality_changed",
+                "connection.connected",
+                "connection.attention_required",
+                "connection.disconnected",
+                "flow.published",
+                "flow.failed",
+                "flow.response_received",
+                "workflow.started",
+                "workflow.completed",
+                "workflow.failed",
+                "campaign.started",
+                "campaign.completed",
+                "campaign.failed",
+                "call.received",
+                "call.ended",
+                "customer.created",
+                "customer.updated",
+                "customer.suspended",
+                "customer.archived",
+                "customer.deleted",
+                "customer.connected",
+                "customer.usage_alert",
+                "setup_link.failed"
+              ]
+            }
+          },
+          "custom_headers": {
+            "type": "object",
+            "properties": {}
+          },
+          "phone_number_restrictions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timeout_seconds": {
+            "type": "integer"
+          },
+          "max_attempts": {
+            "type": "integer"
+          },
+          "api_version": {
+            "type": "string"
+          },
+          "consecutive_failures": {
+            "type": "integer"
+          },
+          "paused_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "secret": {
+            "type": "string",
+            "description": "Shown once. Use it to verify X-LazyApp-Signature."
+          }
+        }
+      },
+      "WorkflowListPlain": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Workflow"
+            }
           }
         }
       }
