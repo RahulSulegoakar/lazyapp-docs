@@ -90,9 +90,9 @@ def all_contacts(api_key):
 
 ## Exceptions
 
-Three endpoints do not use cursors, because their result sets are small and bounded.
+Two endpoints are page-numbered rather than cursor-paged, because their result sets are small and bounded by how many customers you have:
 
-`GET /v1/platform/customers` and `GET /v1/platform/setup-links` are page-numbered:
+`GET /v1/platform/customers` and `GET /v1/platform/setup-links`:
 
 ```json
 {
@@ -101,8 +101,4 @@ Three endpoints do not use cursors, because their result sets are small and boun
 }
 ```
 
-`GET /v1/workflows` returns up to `limit` workflows with no cursor and no `meta`, because a workspace has few workflows:
-
-```json
-{ "data": [] }
-```
+Everything else under `/v1` uses cursors.

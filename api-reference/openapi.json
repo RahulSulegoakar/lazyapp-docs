@@ -4291,14 +4291,14 @@
           "Workflows"
         ],
         "summary": "List workflows",
-        "description": "Automations defined in the workspace. Unlike other lists this one is capped by `limit` rather than cursor-paginated, because a workspace has few workflows.\n\n**Required scope:** `messages:read`",
+        "description": "Automations defined in the workspace, newest first.\n\n**Required scope:** `messages:read`",
         "responses": {
           "200": {
-            "description": "Up to `limit` workflows.",
+            "description": "A page of workflows.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WorkflowListPlain"
+                  "$ref": "#/components/schemas/WorkflowList"
                 }
               }
             }
@@ -4354,6 +4354,14 @@
               "minimum": 1,
               "maximum": 100,
               "default": 25
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor from a previous response's `next_cursor`.",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -8155,6 +8163,22 @@
           }
         }
       },
+      "WorkflowList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Workflow"
+            }
+          },
+          "next_cursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Pass back as `cursor` to fetch the next page. `null` on the last page."
+          }
+        }
+      },
       "CapabilityList": {
         "type": "object",
         "properties": {
@@ -8484,17 +8508,6 @@
           "secret": {
             "type": "string",
             "description": "Shown once. Use it to verify X-LazyApp-Signature."
-          }
-        }
-      },
-      "WorkflowListPlain": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Workflow"
-            }
           }
         }
       }
