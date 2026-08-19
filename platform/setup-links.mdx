@@ -22,16 +22,14 @@ curl https://lazyapp.in/v1/platform/setup-links \
 
 ```json
 {
-  "data": {
-    "id": "set_4a6b8c7d",
-    "customer_id": "cus_9f8b1c2d",
-    "url": "https://lazyapp.in/connect/set_4a6b8c7d...",
-    "expires_at": "2026-08-26T11:42:07+00:00",
-    "use_policy": "single",
-    "use_count": 0,
-    "usable": true,
-    "token": "..."
-  }
+  "id": "set_4a6b8c7d",
+  "customer_id": "cus_9f8b1c2d",
+  "url": "https://lazyapp.in/connect/set_4a6b8c7d...",
+  "expires_at": "2026-08-26T11:42:07+00:00",
+  "use_policy": "single",
+  "use_count": 0,
+  "usable": true,
+  "token": "..."
 }
 ```
 
@@ -70,7 +68,7 @@ curl -X DELETE https://lazyapp.in/v1/platform/setup-links/{setup_link} \
   -H "Authorization: Bearer $LAZYAPP_API_KEY"
 ```
 
-The URL stops working immediately. `GET /v1/platform/setup-links` lists links, page-numbered, with `usable` telling you whether each still works, so a support agent can see at a glance whether a customer's link expired.
+Answers `204`. The URL stops working immediately. `GET /v1/platform/setup-links` lists links, page-numbered, with `usable` telling you whether each still works, so a support agent can see at a glance whether a customer's link expired.
 
 ## After connecting
 

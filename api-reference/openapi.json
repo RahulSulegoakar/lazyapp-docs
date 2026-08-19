@@ -580,15 +580,8 @@
         "summary": "Cancel a scheduled message",
         "description": "Cancels a message that has not been sent. Already-sent messages cannot be recalled.\n\n**Required scope:** `messages:send`",
         "responses": {
-          "200": {
-            "description": "Cancelled.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Cancelled"
-                }
-              }
-            }
+          "204": {
+            "description": "Cancelled. No content."
           },
           "401": {
             "description": "Missing or invalid API key.",
@@ -1939,15 +1932,8 @@
         "summary": "Delete a template",
         "description": "Deletes at Meta and marks the local record deleted.\n\n**Required scope:** `templates:write`",
         "responses": {
-          "200": {
-            "description": "Deleted.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Deleted"
-                }
-              }
-            }
+          "204": {
+            "description": "Deleted. No content."
           },
           "401": {
             "description": "Missing or invalid API key.",
@@ -2378,15 +2364,8 @@
         "summary": "Delete media",
         "description": "Deletes the provider copy and any retained bytes. The access history survives, including this deletion.\n\n**Required scope:** `media:write`",
         "responses": {
-          "200": {
-            "description": "Deleted.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Deleted"
-                }
-              }
-            }
+          "204": {
+            "description": "Deleted. No content."
           },
           "401": {
             "description": "Missing or invalid API key.",
@@ -4221,15 +4200,8 @@
         "summary": "Delete a webhook endpoint",
         "description": "Stops all deliveries to it.\n\n**Required scope:** `webhooks:write`",
         "responses": {
-          "200": {
-            "description": "Deleted.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Deleted"
-                }
-              }
-            }
+          "204": {
+            "description": "Deleted. No content."
           },
           "401": {
             "description": "Missing or invalid API key.",
@@ -5022,7 +4994,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlatformCustomerEnvelope"
+                  "$ref": "#/components/schemas/PlatformCustomer"
                 }
               }
             }
@@ -5151,7 +5123,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlatformCustomerEnvelope"
+                  "$ref": "#/components/schemas/PlatformCustomer"
                 }
               }
             }
@@ -5221,7 +5193,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlatformCustomerEnvelope"
+                  "$ref": "#/components/schemas/PlatformCustomer"
                 }
               }
             }
@@ -5431,7 +5403,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlatformCustomerEnvelope"
+                  "$ref": "#/components/schemas/PlatformCustomer"
                 }
               }
             }
@@ -5522,7 +5494,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlatformCustomerEnvelope"
+                  "$ref": "#/components/schemas/PlatformCustomer"
                 }
               }
             }
@@ -5613,7 +5585,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PlatformCustomerEnvelope"
+                  "$ref": "#/components/schemas/PlatformCustomer"
                 }
               }
             }
@@ -5704,7 +5676,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiKeyEnvelope"
+                  "$ref": "#/components/schemas/ApiKeyCreated"
                 }
               }
             }
@@ -5976,7 +5948,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SetupLinkEnvelope"
+                  "$ref": "#/components/schemas/SetupLink"
                 }
               }
             }
@@ -6174,7 +6146,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/EmbedTokenEnvelope"
+                  "$ref": "#/components/schemas/EmbedToken"
                 }
               }
             }
@@ -8215,22 +8187,6 @@
           }
         }
       },
-      "PlatformCustomerEnvelope": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/PlatformCustomer"
-          }
-        }
-      },
-      "SetupLinkEnvelope": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/SetupLink"
-          }
-        }
-      },
       "SetupLinkList": {
         "type": "object",
         "properties": {
@@ -8250,38 +8206,6 @@
                 "type": "integer"
               }
             }
-          }
-        }
-      },
-      "EmbedTokenEnvelope": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/EmbedToken"
-          }
-        }
-      },
-      "ApiKeyEnvelope": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/ApiKeyCreated"
-          }
-        }
-      },
-      "Deleted": {
-        "type": "object",
-        "properties": {
-          "deleted": {
-            "type": "boolean"
-          }
-        }
-      },
-      "Cancelled": {
-        "type": "object",
-        "properties": {
-          "cancelled": {
-            "type": "boolean"
           }
         }
       },

@@ -50,6 +50,27 @@ Two more appear only when relevant:
 
 Messages carry the `request_id` of the call that created them, so a delivery report weeks later still points back at the API request that started it.
 
+## Response shape
+
+One object comes back on its own:
+
+```json
+{ "uuid": "9f8b1c2d-...", "status": "sent" }
+```
+
+A list comes back under `data`, with its cursor alongside:
+
+```json
+{ "data": [], "next_cursor": null }
+```
+
+That is the whole rule. `data` means "here is a page of things" — it never wraps a single
+object, so one type in your client models every single-object response and one models
+every list.
+
+A `DELETE` that succeeded answers `204` with no body. There is nothing useful to say
+about a thing that no longer exists.
+
 ## Pagination
 
 List endpoints use [cursor pagination](/concepts/pagination), except the two small platform lists, which are page-numbered. No endpoint returns an unbounded array.

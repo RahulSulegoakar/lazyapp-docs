@@ -3,6 +3,26 @@ title: "Changelog"
 description: "What shipped, newest first."
 ---
 
+<Update label="2026-08-19" description="v1 · breaking, pre-launch">
+
+**One shape for one object.** The Platform API wrapped single objects in a `data`
+envelope while every other single-object response was bare. All of them are bare now;
+`data` wraps lists only. See [conventions](/concepts/conventions#response-shape).
+
+**Every `DELETE` answers `204`.** Four endpoints previously returned `200` with
+`{"deleted": true}` or `{"cancelled": true}`. A successful delete has no body.
+
+**`GET /v1/workflows` cursor-paginates** like every other list, so a workspace with
+more than 100 workflows can read all of them.
+
+<Note>
+  These three are breaking, and they are shipping before the API has integrators.
+  Nothing after this point changes an existing response shape inside `v1` — see
+  [versioning](/reference/versioning).
+</Note>
+
+</Update>
+
 <Update label="2026-08-19" description="v1">
 
 **Idempotency on every write.** `Idempotency-Key` is now honoured on all `/v1` write endpoints, not just messages and events. A retry replays the recorded response; reusing a key with a different body is refused. See [idempotency](/concepts/idempotency).
