@@ -15,6 +15,7 @@ Every API key carries scopes. A call outside them returns `403`.
 | `webhooks:write` | Manage webhook endpoints and read deliveries |
 | `flows:write` | Manage WhatsApp Flows and read their responses |
 | `customers:write` | Manage platform customers, setup links and embed tokens |
+| `customers:act` | Act on behalf of a platform customer without managing them |
 | `billing:read` | Read billing and usage |
 
 ## By endpoint group
@@ -34,7 +35,7 @@ Every API key carries scopes. A call outside them returns `403`.
 | Flows | `flows:write` | `flows:write` |
 | Verify — send | — | `messages:send` |
 | Verify — verify | `messages:read` | — |
-| Platform | `customers:write` | `customers:write` |
+| Platform | `customers:write` or `customers:act` | `customers:write` |
 
 <Note>
   Media metadata reads use `messages:read`, while uploads and deletes need `media:write`.

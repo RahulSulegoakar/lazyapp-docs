@@ -138,7 +138,7 @@
             }
           },
           "422": {
-            "description": "Validation failed.",
+            "description": "Validation failed, or the send was refused. Refusals include a stable `code` \u2014 `customer_service_window_closed`, `contact_suppressed`, `marketing_opt_out`, or `no_connection`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -859,14 +859,14 @@
           "Contacts"
         ],
         "summary": "Retrieve a contact",
-        "description": "By LazyApp uuid.\n\n**Required scope:** `messages:read`",
+        "description": "By LazyApp uuid or phone number. Includes `service_window` so you can choose text or template before sending.\n\n**Required scope:** `messages:read`",
         "responses": {
           "200": {
             "description": "The contact.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Contact"
+                  "$ref": "#/components/schemas/ContactDetail"
                 }
               }
             }
@@ -6057,6 +6057,10 @@
                   "failure_webhook_url": {
                     "type": "string",
                     "maxLength": 2048
+                  },
+                  "template_set": {
+                    "type": "string",
+                    "description": "Starter templates to apply when the customer connects. Valid keys from `GET /v1/templates/sets`."
                   }
                 },
                 "required": [
@@ -6757,6 +6761,453 @@
           }
         }
       }
+    },
+    "/v1/messages/{message}/media": {
+      "get": {
+        "tags": [
+          "Messages"
+        ],
+        "summary": "Download inbound message media",
+        "description": "Returns the bytes of media a contact sent in. Outbound uploads use `POST /v1/media`; this is the other direction.\n\nReturns `409` while the download is still queued \u2014 retry rather than treating it as missing.\n\n**Required scope:** `messages:read`",
+        "parameters": [
+          {
+            "name": "message",
+            "in": "path",
+            "required": true,
+            "description": "Message uuid.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The media file.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key lacks the required scope, or is restricted from this phone number.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Media is still being downloaded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/contacts/{contact}/consent": {
+      "post": {
+        "tags": [
+          "Contacts"
+        ],
+        "summary": "Record contact consent",
+        "description": "Record consent collected outside LazyApp \u2014 for example from a website opt-in box. Marketing broadcasts refuse recipients without granted consent.\n\nGranting marketing consent also lifts a matching suppression.\n\n**Required scope:** `messages:send`",
+        "parameters": [
+          {
+            "name": "contact",
+            "in": "path",
+            "required": true,
+            "description": "Contact uuid or phone number.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Optional. Makes this write safe to retry: the same key replays the first response instead of acting twice.",
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "granted": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Whether consent is granted or revoked."
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "whatsapp",
+                      "sms",
+                      "email"
+                    ],
+                    "default": "whatsapp"
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "enum": [
+                      "marketing",
+                      "transactional",
+                      "all"
+                    ],
+                    "default": "marketing"
+                  },
+                  "consent_text": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "description": "What the person agreed to."
+                  },
+                  "proof_reference": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "description": "Where the consent is recorded \u2014 a form id, URL or ticket number."
+                  },
+                  "captured_by": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "description": "Who captured it \u2014 a user id or system name."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Consent updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactConsent"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Consent recorded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactConsent"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key lacks the required scope, or is restricted from this phone number.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/templates/sets": {
+      "get": {
+        "tags": [
+          "Templates"
+        ],
+        "summary": "List starter template sets",
+        "description": "The template sets this installation can apply when creating a setup link. Use the `key` as `template_set` on `POST /v1/platform/setup-links`.\n\n**Required scope:** `templates:read`",
+        "responses": {
+          "200": {
+            "description": "Available template sets.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateSetList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key lacks the required scope, or is restricted from this phone number.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/webhooks/{webhook}/resume": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Resume a paused webhook endpoint",
+        "description": "Starts delivering to an endpoint again after it was auto-paused for repeated failures.\n\n**Required scope:** `webhooks:write`",
+        "parameters": [
+          {
+            "name": "webhook",
+            "in": "path",
+            "required": true,
+            "description": "Endpoint id.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Optional. Makes this write safe to retry: the same key replays the first response instead of acting twice.",
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Endpoint resumed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEndpoint"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key lacks the required scope, or is restricted from this phone number.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/webhooks/{webhook}/rotate-secret": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Rotate a webhook signing secret",
+        "description": "Issues a new signing secret without deleting the endpoint. The new `secret` is shown once \u2014 store it before the response is gone.\n\n**Required scope:** `webhooks:write`",
+        "parameters": [
+          {
+            "name": "webhook",
+            "in": "path",
+            "required": true,
+            "description": "Endpoint id.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Optional. Makes this write safe to retry: the same key replays the first response instead of acting twice.",
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Secret rotated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookEndpointWithSecret"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key lacks the required scope, or is restricted from this phone number.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6774,6 +7225,10 @@
           "message": {
             "type": "string",
             "description": "Human-readable description of what went wrong."
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable reason, when the failure is one a client can branch on."
           }
         },
         "required": [
@@ -7479,6 +7934,11 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "pause_reason": {
+            "type": "string",
+            "nullable": true,
+            "description": "Why deliveries stopped. Set when LazyApp auto-paused the endpoint after repeated failures."
           }
         }
       },
@@ -8434,6 +8894,141 @@
             "description": "Shown once. Use it to verify X-LazyApp-Signature."
           }
         }
+      },
+      "ContactConsent": {
+        "type": "object",
+        "properties": {
+          "uuid": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "granted",
+              "revoked"
+            ]
+          },
+          "consented_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "revoked_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "ServiceWindow": {
+        "type": "object",
+        "properties": {
+          "open": {
+            "type": "boolean",
+            "description": "Whether free-form (non-template) messages may be sent."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "expiring",
+              "closed"
+            ]
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "last_inbound_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "ContactDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Contact"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "service_window": {
+                "$ref": "#/components/schemas/ServiceWindow"
+              }
+            }
+          }
+        ]
+      },
+      "TemplateSet": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "templates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "language": {
+                  "type": "string"
+                },
+                "category": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "TemplateSetList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TemplateSet"
+            }
+          }
+        }
+      },
+      "WebhookEndpointWithSecret": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/WebhookEndpoint"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "secret": {
+                "type": "string",
+                "description": "New signing secret. Shown once."
+              }
+            },
+            "required": [
+              "secret"
+            ]
+          }
+        ]
       }
     }
   }

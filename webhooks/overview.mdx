@@ -78,7 +78,16 @@ Deliveries go through a transactional outbox: the event is committed with the st
   </Step>
   <Step title="Auto-pause">
     Repeated consecutive failures pause the endpoint, so a dead receiver does not
-    accumulate an unbounded backlog. `paused_at` and `consecutive_failures` show this.
+    accumulate an unbounded backlog. `paused_at`, `consecutive_failures` and
+    `pause_reason` show this — `pause_reason` tells you whether LazyApp paused it
+    or you did.
+  </Step>
+  <Step title="Resume and rotate">
+    Once your endpoint is healthy again, resume deliveries with
+    [`POST /v1/webhooks/{webhook}/resume`](/api-reference/webhooks/resume-a-paused-webhook-endpoint).
+    If you lost the signing secret, rotate it with
+    [`POST /v1/webhooks/{webhook}/rotate-secret`](/api-reference/webhooks/rotate-a-webhook-signing-secret)
+    instead of deleting and re-registering the endpoint.
   </Step>
   <Step title="Dead-letter and replay">
     Exhausted deliveries are kept, not discarded. Inspect them with

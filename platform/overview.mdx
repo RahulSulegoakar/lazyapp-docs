@@ -50,6 +50,10 @@ Each of your customers gets an isolated LazyApp workspace: their own connection,
 
     That key can only see that customer's workspace. Every other `/v1` endpoint then
     behaves exactly as documented, scoped to them.
+
+    Alternatively, keep one platform key and pass `X-LazyApp-Customer` on each request.
+    The key needs `customers:act` (send only) or `customers:write` (full management).
+    See [Authentication](/authentication#acting-for-a-platform-customer).
   </Step>
 </Steps>
 

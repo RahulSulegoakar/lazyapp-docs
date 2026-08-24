@@ -175,6 +175,27 @@ Quote the message you are answering, so it threads in the recipient's client:
 }
 ```
 
+## Service window
+
+Free-form messages only land within 24 hours of the contact's last inbound message. Outside that window, send a [template](/sending/templates).
+
+`GET /v1/contacts/{contact}` includes `service_window` so you can choose the right message type before sending:
+
+```json
+{
+  "uuid": "1a2b3c4d-...",
+  "phone_number": "+919812345670",
+  "service_window": {
+    "open": true,
+    "state": "expiring",
+    "expires_at": "2026-08-20T14:30:00+05:30",
+    "last_inbound_at": "2026-08-19T14:30:00+05:30"
+  }
+}
+```
+
+`state` is `open`, `expiring` (less than two hours left) or `closed`. If you send anyway and the window is closed, the refusal carries `code: customer_service_window_closed`. See [Errors](/concepts/errors).
+
 ## Scheduling
 
 Add `send_at` and the response becomes `202` with a scheduled id instead of a sent message:

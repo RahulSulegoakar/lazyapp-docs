@@ -45,6 +45,20 @@ Hand `url` to your customer. Email it, or put it behind a **Connect WhatsApp** b
 | `redirect_url` | Where the customer lands afterwards |
 | `locale` | Renders the connect screen in their language |
 | `success_webhook_url` / `failure_webhook_url` | Per-link callbacks, in addition to your workspace webhooks |
+| `template_set` | Starter templates to apply when the customer connects. Valid keys from [`GET /v1/templates/sets`](/api-reference/templates/list-starter-template-sets) |
+
+## Starter templates
+
+When a customer connects through a setup link, LazyApp can seed their workspace with a pre-built template set — appointment reminders, order updates and the like. Pass `template_set` when creating the link:
+
+```json
+{
+  "customer_id": "cus_9f8b1c2d",
+  "template_set": "real_estate"
+}
+```
+
+Discover valid keys with [`GET /v1/templates/sets`](/api-reference/templates/list-starter-template-sets). Do not hardcode them — the available sets depend on this installation's configuration.
 
 ## Do not trust the redirect
 

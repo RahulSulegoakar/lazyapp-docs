@@ -3,6 +3,22 @@ title: "Changelog"
 description: "What shipped, newest first."
 ---
 
+<Update label="2026-08-22" description="v1">
+
+**Webhook resume and secret rotation.** Paused endpoints can be turned back on with `POST /v1/webhooks/{webhook}/resume`. Lost signing secrets can be rotated with `POST /v1/webhooks/{webhook}/rotate-secret` without deleting the endpoint. Listing now includes `pause_reason`.
+
+**Inbound media download.** `GET /v1/messages/{message}/media` returns the bytes of media a contact sent in. Returns `409` while the download is still queued.
+
+**Contact consent API.** `POST /v1/contacts/{contact}/consent` records consent collected outside LazyApp — for example from a website opt-in box. Granting marketing consent lifts a matching suppression.
+
+**Starter template sets.** `GET /v1/templates/sets` lists the template sets this installation supports. Pass `template_set` when creating a setup link.
+
+**`customers:act` scope.** Platforms can act on a customer's behalf with `X-LazyApp-Customer` without holding `customers:write`.
+
+**Stable send refusal codes.** Refused sends now include a `code` — `customer_service_window_closed`, `contact_suppressed`, `marketing_opt_out`, or `no_connection`. Contacts report `service_window` on read.
+
+</Update>
+
 <Update label="2026-08-19" description="v1 · breaking, pre-launch">
 
 **One shape for one object.** The Platform API wrapped single objects in a `data`

@@ -40,6 +40,7 @@ Each key carries scopes. A request for an endpoint outside them returns `403`.
 | `webhooks:write` | Manage webhook endpoints and read deliveries |
 | `flows:write` | Manage WhatsApp Flows and read responses |
 | `customers:write` | Manage platform customers, setup links and embed tokens |
+| `customers:act` | Act on behalf of a platform customer without managing them |
 | `billing:read` | Read billing and usage |
 
 Grant the narrowest set that works. A key used only for OTP delivery needs `messages:send` and nothing else.
@@ -55,6 +56,20 @@ Beyond scopes, a key can be restricted to:
 - **A single platform customer.** Keys minted through
   [`POST /v1/platform/customers/{customer}/api-keys`](/api-reference/platform/issue-an-api-key-for-a-customer)
   can only see that customer's workspace.
+
+## Acting for a platform customer
+
+If you resell LazyApp, a platform key can call any `/v1` endpoint on a customer's behalf by passing their identifier:
+
+```bash
+curl https://lazyapp.in/v1/contacts \
+  -H "Authorization: Bearer sk_live_..." \
+  -H "X-LazyApp-Customer: acct_8812"
+```
+
+`X-LazyApp-Customer` accepts the customer's `public_id`, `uuid` or `external_id`. You can also pass `?customer=` on the query string.
+
+The key needs `customers:act` or `customers:write`. Use `customers:act` when the key only sends on customers' behalf — it cannot rename, suspend or delete them. See [Platforms](/platform/overview).
 
 ## Failed attempts
 

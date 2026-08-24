@@ -45,6 +45,25 @@ This is deliberate. A broadcast created on Monday and sent on Friday respects th
 
 Excluded recipients are recorded with a reason, so you can explain exactly why someone did not receive a campaign.
 
+## Recording consent from your own opt-in flow
+
+Broadcasts refuse recipients without granted marketing consent. Consent collected on your own website — a checkbox, a form, a CRM export — can be recorded with:
+
+```bash
+curl https://lazyapp.in/v1/contacts/{contact}/consent \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "granted": true,
+    "purpose": "marketing",
+    "consent_text": "I agree to receive promotional messages on WhatsApp",
+    "proof_reference": "form-submission-1042",
+    "captured_by": "website-checkout"
+  }'
+```
+
+Consent is evidence, not just a flag — `consent_text`, `proof_reference` and `captured_by` are stored exactly as given. Granting marketing consent also lifts a matching suppression, so someone who just opted in on your site is not still opted out.
+
 ## Starting and watching
 
 Create with `"start": true`, or start later:

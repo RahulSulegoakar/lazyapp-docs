@@ -9,6 +9,24 @@ Every failure returns JSON with a `message`:
 { "message": "Template not found or not approved." }
 ```
 
+Send refusals also carry a stable `code` so your client can branch without string-matching:
+
+```json
+{
+  "message": "The customer service window is closed for this recipient. Send an approved template instead.",
+  "code": "customer_service_window_closed"
+}
+```
+
+| Code | Meaning | What to do |
+| --- | --- | --- |
+| `customer_service_window_closed` | More than 24 hours since the contact last wrote in | Send a [template](/sending/templates) instead |
+| `contact_suppressed` | The contact opted out of all messages | Do not retry |
+| `marketing_opt_out` | The contact opted out of marketing | Do not send marketing; transactional may still work |
+| `no_connection` | No WhatsApp connection is configured, or none matches the number asked for | Tell the business to finish setup |
+
+Check `service_window` on [`GET /v1/contacts/{contact}`](/api-reference/contacts/retrieve-a-contact) before sending to avoid the closed-window refusal.
+
 Validation failures add a per-field `errors` map:
 
 ```json

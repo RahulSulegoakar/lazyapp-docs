@@ -75,3 +75,5 @@ The history outlives the asset, so deleting media does not erase the record of w
 ## Inbound media
 
 When a contact sends you a file, the `message.received` webhook carries a media id. LazyApp downloads and retains it according to your retention policy, so you are not racing Meta's expiry to fetch it.
+
+Download the bytes with [`GET /v1/messages/{message}/media`](/api-reference/messages/download-inbound-message-media), where `{message}` is the message uuid from the webhook. The response is the raw file. If the download is still queued, you get `409` — retry after a short pause rather than treating it as missing.
