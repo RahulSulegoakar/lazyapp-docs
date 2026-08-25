@@ -1,0 +1,58 @@
+---
+title: "Automation packs"
+description: "Provision event mappings, workflows and flows for a vertical in one call."
+---
+
+Platforms that onboard many workspaces should not click through the console for every customer. An automation pack is a named set of event-to-template mappings, starter workflows and WhatsApp Flows that LazyApp can create with one API call.
+
+Today the built-in pack is `real_estate` — visit lifecycle events, idle re-engagement workflows and an appointment booking flow.
+
+## Provision a pack
+
+```bash
+curl -X PUT https://lazyapp.in/v1/automation-packs/provision \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: acme-real-estate-pack" \
+  -H "X-LazyApp-Customer: customer_123" \
+  -d '{
+    "pack": "real_estate",
+    "include_events": true,
+    "include_workflows": true,
+    "include_flows": true
+  }'
+```
+
+**Required scope:** `templates:write`.
+
+The response reports what was created or skipped:
+
+```json
+{
+  "event_mappings": { "created": 6, "updated": 0, "skipped": 0, "mappings": [] },
+  "workflows": { "created": 3, "skipped": 0, "items": [] },
+  "flows": { "created": 1, "skipped": 0, "items": [] }
+}
+```
+
+Calling again with the same pack is safe. Unchanged rows are counted as `skipped`.
+
+Skip sections you manage yourself:
+
+```json
+{
+  "pack": "real_estate",
+  "include_workflows": false,
+  "include_flows": false
+}
+```
+
+## Event mappings only
+
+If you only need template mappings, use [event mapping provision](/sending/events#provisioning-mappings) (`PUT /v1/event-mappings/provision`) with the same `pack` name or an explicit `mappings` list.
+
+## After provision
+
+- Send business events with `POST /v1/events` using the pack's event types (for example `appointment.confirmed`).
+- Fire integration events from your app so the pack's workflows run (`visit.completed`, `conversation.idle`, `lead.created` for `real_estate`).
+- Edit workflows in the LazyApp console automation builder when a customer needs custom copy or branching.

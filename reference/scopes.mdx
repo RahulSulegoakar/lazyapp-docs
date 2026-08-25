@@ -9,8 +9,8 @@ Every API key carries scopes. A call outside them returns `403`.
 | --- | --- |
 | `messages:send` | Send messages, create and update contacts, send events, trigger workflows, start broadcasts |
 | `messages:read` | Read messages, contacts, conversations, workflows, broadcasts, capabilities, scheduled messages |
-| `templates:read` | List and read templates |
-| `templates:write` | Create, sync and delete templates |
+| `templates:read` | List and read templates and event-to-template mappings |
+| `templates:write` | Create, sync and delete templates; provision event mappings and automation packs |
 | `media:write` | Upload and delete media |
 | `webhooks:write` | Manage webhook endpoints and read deliveries |
 | `flows:write` | Manage WhatsApp Flows and read their responses |
@@ -30,6 +30,7 @@ Every API key carries scopes. A call outside them returns `403`.
 | Workflows | `messages:read` | `messages:send` |
 | Capabilities | `messages:read` | — |
 | Templates | `templates:read` | `templates:write` |
+| Event mappings / automation packs | `templates:read` | `templates:write` |
 | Media | `messages:read` | `media:write` |
 | Webhooks | `webhooks:write` | `webhooks:write` |
 | Flows | `flows:write` | `flows:write` |

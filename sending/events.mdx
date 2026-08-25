@@ -23,7 +23,48 @@ curl https://lazyapp.in/v1/events \
   }'
 ```
 
-LazyApp resolves the event to a template, maps the properties onto its placeholders, and sends. The mapping lives in the console, so marketing can change the wording — or the language, or the template entirely — without touching your code.
+LazyApp resolves the event to a template, maps the properties onto its placeholders, and sends. The mapping lives in your workspace — set it in the console or provision it over the API — so marketing can change the wording without touching your code.
+
+## Listing mappings
+
+```bash
+curl https://lazyapp.in/v1/event-mappings \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+**Required scope:** `templates:read`.
+
+## Provisioning mappings
+
+Platforms can create or update mappings without the console:
+
+```bash
+curl -X PUT https://lazyapp.in/v1/event-mappings/provision \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: acme-real-estate-mappings" \
+  -d '{ "pack": "real_estate" }'
+```
+
+Or pass an explicit list (not both `pack` and `mappings`):
+
+```json
+{
+  "mappings": [
+    {
+      "event_type": "order.shipped",
+      "template_name": "order_shipped",
+      "language": "en",
+      "body_variables": ["order_id", "eta"],
+      "pricing_category": "utility"
+    }
+  ]
+}
+```
+
+**Required scope:** `templates:write`.
+
+To also seed workflows and Flows for a vertical, use [automation packs](/sending/automation-packs).
 
 ## Addressing
 

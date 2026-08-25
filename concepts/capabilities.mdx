@@ -16,23 +16,20 @@ curl https://lazyapp.in/v1/capabilities \
 {
   "data": [
     {
-      "uuid": "9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d",
+      "connection_uuid": "9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d",
       "phone_number_id": "123456789012345",
-      "waba_id": "987654321098765",
-      "display_phone_number": "+91 98123 45670",
-      "verified_name": "Acme Retail",
-      "status": "connected",
-      "quality_rating": "GREEN",
-      "mode": "live",
+      "display_phone_number": "+919812345670",
       "is_default": true,
+      "quality_rating": "GREEN",
+      "messaging_limit_tier": "TIER_1K",
       "capabilities": {
-        "templates": true,
-        "media": true,
-        "interactive": true,
+        "messages.text": true,
+        "messages.template": true,
         "flows": true,
         "calling": false,
         "block_users": false,
-        "groups": false
+        "groups": false,
+        "commerce.catalog_sync": false
       }
     }
   ]
@@ -70,3 +67,7 @@ if (number.capabilities.calling) {
 ## Quality rating
 
 `quality_rating` is Meta's own signal — `GREEN`, `YELLOW` or `RED` — reflecting how recipients are reacting to your messages. A number sliding to `RED` risks having its messaging limit cut, so it is worth alerting on. You also receive `phone_number.quality_changed` [webhooks](/webhooks/events).
+
+## Messaging limit tier
+
+`messaging_limit_tier` is Meta's send ceiling for that number (for example `TIER_1K`). It moves as quality and usage change. Pair it with `quality_rating` when you decide how aggressively to run broadcasts.
