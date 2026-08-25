@@ -3,6 +3,22 @@ title: "Changelog"
 description: "What shipped, newest first."
 ---
 
+<Update label="2026-08-25" description="v1">
+
+**Call history API.** `GET /v1/calls` and `GET /v1/calls/{call}` return WhatsApp call records (direction, status, duration, related conversation). Scope `messages:read`. Live WebRTC answer is not included.
+
+</Update>
+
+<Update label="2026-08-25" description="v1">
+
+**Automation packs.** `PUT /v1/automation-packs/provision` seeds event-to-template mappings, starter workflows and Flows for a vertical pack (starting with `real_estate`). See [automation packs](/sending/automation-packs).
+
+**Event mapping API.** `GET /v1/event-mappings` lists workspace mappings. `PUT /v1/event-mappings/provision` creates or updates them from a pack or an explicit list.
+
+**Capabilities fields.** `GET /v1/capabilities` returns `connection_uuid`, `quality_rating` and `messaging_limit_tier` per connection.
+
+</Update>
+
 <Update label="2026-08-22" description="v1">
 
 **Webhook resume and secret rotation.** Paused endpoints can be turned back on with `POST /v1/webhooks/{webhook}/resume`. Lost signing secrets can be rotated with `POST /v1/webhooks/{webhook}/rotate-secret` without deleting the endpoint. Listing now includes `pause_reason`.
