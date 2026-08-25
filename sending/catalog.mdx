@@ -1,0 +1,123 @@
+---
+title: "Catalog and products"
+description: "Send Meta Commerce product messages with a catalog id."
+---
+
+Product and catalog interactive messages use a Meta Commerce catalog you already manage in Meta. LazyApp does not sync inventory — `commerce.catalog_sync` stays `false` until that connector ships.
+
+## Catalog id on the connection
+
+Store the Meta catalog id on the WhatsApp connection (phone number settings in the console). Product sends still accept `catalog_id` in the interactive payload; the saved value is a default for the inbox and for `GET /v1/catalog/products`.
+
+## List products
+
+```bash
+curl "https://lazyapp.in/v1/catalog/products" \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+Optional query params: `connection_uuid`, `phone_number_id`, `limit`, `cursor`.
+
+**Required scope:** `messages:read`
+
+The connection must have `catalog_id` set. LazyApp proxies Meta's catalog products and returns:
+
+```json
+{
+  "catalog_id": "1234567890",
+  "data": [
+    {
+      "id": "prod-1",
+      "retailer_id": "sku-tee",
+      "name": "T-Shirt",
+      "description": "Cotton tee",
+      "price": "499 INR",
+      "image_url": "https://cdn.acme.example/tee.jpg",
+      "availability": "in stock"
+    }
+  ],
+  "next_cursor": null
+}
+```
+
+## Send product interactive messages
+
+Use `POST /v1/messages` with `type: interactive`. Check `messages.product` / `messages.product_list` / `messages.catalog` on [capabilities](/concepts/capabilities) first.
+
+<CodeGroup>
+```json Product
+{
+  "type": "interactive",
+  "to": "+919812345670",
+  "interactive": {
+    "type": "product",
+    "body": { "text": "This one is in stock." },
+    "action": {
+      "catalog_id": "1234567890",
+      "product_retailer_id": "sku-tee"
+    }
+  }
+}
+```
+
+```json Multi-product
+{
+  "type": "interactive",
+  "to": "+919812345670",
+  "interactive": {
+    "type": "product_list",
+    "header": { "type": "text", "text": "Featured" },
+    "body": { "text": "Pick a product." },
+    "action": {
+      "catalog_id": "1234567890",
+      "sections": [
+        {
+          "title": "Tops",
+          "product_items": [
+            { "product_retailer_id": "sku-tee" },
+            { "product_retailer_id": "sku-hoodie" }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
+```json Full catalog
+{
+  "type": "interactive",
+  "to": "+919812345670",
+  "interactive": {
+    "type": "catalog_message",
+    "body": { "text": "Browse the shop." },
+    "action": {
+      "name": "catalog_message",
+      "parameters": {
+        "thumbnail_product_retailer_id": "sku-tee"
+      }
+    }
+  }
+}
+```
+</CodeGroup>
+
+`catalog_message` opens the catalog linked to the WABA on Meta. The optional thumbnail is a product retailer id, not the catalog id.
+
+## Inbound orders
+
+When a contact submits a WhatsApp cart, LazyApp stores an inbound message with `type` `order`. The structured cart is on `content.order`:
+
+```json
+{
+  "order": {
+    "catalog_id": "1234567890",
+    "text": null,
+    "product_items": [
+      { "product_retailer_id": "sku-tee", "quantity": 2 }
+    ]
+  }
+}
+```
+
+That `content` object is included on `message.received` [webhooks](/webhooks/events).

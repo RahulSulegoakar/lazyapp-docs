@@ -38,7 +38,9 @@
               "sending/messages",
               "sending/templates",
               "sending/media",
+              "sending/catalog",
               "sending/events",
+              "sending/automation-packs",
               "sending/verify",
               "sending/broadcasts"
             ]

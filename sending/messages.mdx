@@ -142,9 +142,10 @@ Or by business-scoped user id, when Meta gave you one instead of a number:
     }
     ```
 
-    Buttons, lists, call-to-action URLs, flows, address collection and
-    `contact_information_request` all live under `interactive`. The user's choice arrives
-    as a `message.received` [webhook](/webhooks/events).
+    Buttons, lists, call-to-action URLs, flows, address collection,
+    `contact_information_request`, and [catalog / product](/sending/catalog) messages all live under
+    `interactive`. The contact's choice arrives as a `message.received` [webhook](/webhooks/events).
+    Cart checkouts arrive as `type: order` with `content.order`.
   </Tab>
 
   <Tab title="Reaction">
