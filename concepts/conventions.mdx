@@ -15,7 +15,7 @@ HTTPS only. Requests over HTTP are rejected, not redirected.
 
 - JSON request bodies, `Content-Type: application/json`. Media upload is `multipart/form-data`.
 - Bearer authentication on every route. See [Authentication](/authentication).
-- Timestamps you send and receive are ISO 8601 with an offset: `2026-08-19T11:42:07+00:00`.
+- Timestamps you send and receive are ISO 8601. Prefer an explicit offset or `Z` (for example `2026-08-19T11:42:07+05:30`). A naive local time with no zone is interpreted as **UTC** — see [scheduling](/sending/messages#scheduling).
 
 ## Identifiers
 

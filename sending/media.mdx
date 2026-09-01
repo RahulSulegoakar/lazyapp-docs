@@ -1,11 +1,25 @@
 ---
 title: "Media"
-description: "Upload once, send many times."
+description: "Upload once, send many times — multipart, URL import, and Meta's 30-day expiry."
 ---
 
-Media is uploaded before it is sent, and the resulting id can be reused across messages.
+Media is uploaded before it is sent. The resulting id can be reused across messages until Meta's copy expires.
 
-## Uploading
+Unlike social APIs that give you a presigned URL and leave you talking to object storage, LazyApp uploads into **WhatsApp Cloud API** for you. You never hold a Meta access token or proxy bytes to Graph.
+
+## Upload flow
+
+<Steps>
+  <Step title="Upload the file">
+    Multipart to `POST /v1/media`, or JSON to `POST /v1/media/url` when the file already has a public URL.
+  </Step>
+  <Step title="Keep the media id">
+    The response includes LazyApp's `uuid` and Meta's `provider_media_id`. Either works as `media_id` when sending.
+  </Step>
+  <Step title="Send with it">
+    Pass `media_id` on `POST /v1/messages` for `image`, `video`, `audio`, `document`, or `sticker`.
+  </Step>
+</Steps>
 
 <CodeGroup>
 ```bash Multipart
@@ -25,7 +39,20 @@ curl https://lazyapp.in/v1/media/url \
 
 The URL form is usually what you want: LazyApp fetches the file and uploads it to Meta, so you do not proxy bytes through your own servers.
 
-Every upload is virus-scanned and MIME-checked, images are optimised, and a thumbnail is generated.
+Every upload is virus-scanned and MIME-checked. Images are optimised and a thumbnail is generated when enabled.
+
+Identical bytes in the same workspace and mode reuse the existing asset when Meta's copy is still valid — a retry of the same file cannot create a duplicate row.
+
+## Supported formats
+
+Default limit is **16 MB** per file (`MEDIA_MAX_SIZE_KB`). Meta may still refuse a type or size that WhatsApp does not accept for that message kind even when LazyApp accepted the upload.
+
+| Kind | Typical MIME types |
+| --- | --- |
+| Images | `image/jpeg`, `image/png`, `image/webp` |
+| Video | `video/mp4`, `video/3gpp` |
+| Audio | `audio/aac`, `audio/amr`, `audio/mpeg`, `audio/mp4`, `audio/ogg` |
+| Documents | `application/pdf`, Office formats, `text/plain` |
 
 ## Meta expires media after about 30 days
 
@@ -53,6 +80,8 @@ For anything you will resend — a catalogue, a logo, a standard form — use `m
   "caption": "Your receipt"
 }
 ```
+
+You can also pass `media_url` on some sends so LazyApp imports and uploads in one step — prefer an explicit upload when you will reuse the same file.
 
 ## Access history
 

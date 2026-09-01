@@ -1,0 +1,75 @@
+---
+title: "Message lifecycle"
+description: "Statuses for scheduled and sent messages, what you can do in each state, and which webhook fires next."
+---
+
+Every outbound message moves through a small state machine. Knowing the status tells you what you can still do and which webhook to expect.
+
+```
+schedule (optional)          send
+pending ──► sent|failed|expired|cancelled
+                │
+                ▼
+            queued ──► sent ──► delivered ──► read / played
+                         │
+                         └──► failed
+```
+
+## Scheduled message statuses
+
+When you pass `send_at` on [`POST /v1/messages`](/sending/messages), LazyApp stores a scheduled row and returns `202` instead of sending immediately.
+
+| Status | Meaning |
+| --- | --- |
+| `pending` | Waiting for `send_at` (or still retrying after a transient failure) |
+| `sent` | Dispatched; the linked message now carries delivery status |
+| `failed` | Could not be sent after attempts |
+| `expired` | Past `ttl_seconds` / expiry before it could go out |
+| `cancelled` | Cancelled with `DELETE /v1/messages/scheduled/{id}` |
+
+List with [`GET /v1/messages/scheduled`](/api-reference/messages/list-scheduled-messages). Cancel while `pending`.
+
+## Message statuses
+
+After accept (or after a schedule fires), the message row uses:
+
+| Status | Meaning | Typical webhook |
+| --- | --- | --- |
+| `queued` | Accepted; waiting on the provider path | — |
+| `sent` | Provider accepted it | `message.sent` |
+| `delivered` | Reached the contact's device | `message.delivered` |
+| `read` | Contact opened it | `message.read` |
+| `played` | Contact played voice/video note | `message.read` / media-specific |
+| `failed` | Terminal failure | `message.failed` |
+
+`POST /v1/messages` returning `201` means **accepted**, not delivered. Poll [`GET /v1/messages/{uuid}`](/api-reference/messages/retrieve-a-message) only for debugging; subscribe to [webhooks](/webhooks/events) in production.
+
+## What you can do
+
+| Operation | When |
+| --- | --- |
+| Cancel schedule | While the scheduled row is `pending` |
+| Fetch message | Any time after accept, by LazyApp uuid |
+| Download inbound media | After `message.received` with media |
+| Retry a failed *schedule* | Create again with a new `Idempotency-Key` / body key — there is no separate retry endpoint |
+
+There is no unpublish: WhatsApp does not let you delete another person's delivered message via the business API the way some social networks do. Contacts can delete for themselves; you may see `message.deleted` when coexistence reports a revoke.
+
+## Tracking with webhooks
+
+| Event | Fires when |
+| --- | --- |
+| `message.sent` | Provider accepted the outbound message |
+| `message.delivered` | Delivered to the device |
+| `message.read` | Opened (or played, for some media) |
+| `message.failed` | Terminal failure; read `error_message` |
+| `message.received` | Inbound from a contact |
+| `message.deleted` | Revoke / delete reported |
+
+See [Webhook events](/webhooks/events) for payload shapes.
+
+## Related
+
+- [Scheduling and timezones](/sending/messages#scheduling) — how `send_at` is interpreted
+- [Idempotency](/concepts/idempotency) — safe retries on create
+- [Errors](/concepts/errors) — refusals vs async failure

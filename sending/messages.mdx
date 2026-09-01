@@ -213,6 +213,32 @@ Add `send_at` and the response becomes `202` with a scheduled id instead of a se
 
 `ttl_seconds` drops the message if it could not be sent within that window — better than a reminder arriving six hours late. List with [`GET /v1/messages/scheduled`](/api-reference/messages/list-scheduled-messages) and cancel with `DELETE`.
 
+### How `send_at` is interpreted
+
+There is no separate `timezone` field. The instant is taken from the string you send:
+
+| You send | Interpreted as |
+| --- | --- |
+| `"2026-08-20T03:30:00Z"` | Absolute UTC |
+| `"2026-08-20T09:00:00+05:30"` | Absolute instant with that offset |
+| `"2026-08-20T09:00:00"` (no zone) | Wall clock in the API's timezone, which is **UTC** |
+
+These three schedule the same instant (09:00 India Standard Time):
+
+```json
+{ "send_at": "2026-08-20T03:30:00Z" }
+{ "send_at": "2026-08-20T09:00:00+05:30" }
+{ "send_at": "2026-08-20T03:30:00" }
+```
+
+The classic bug is a naive local time with no offset — it is treated as UTC, so the message goes out hours early or late for Indian and other non-UTC businesses. Prefer an explicit offset or `Z`.
+
+Responses return `send_at` as ISO 8601. Convert to the viewer's timezone at display time; do not assume it comes back in the offset you sent.
+
+LazyApp does not offer profile "queues" that drip-feed posts into recurring slots. For a batch of reminders, compute each `send_at` yourself (or stagger in your worker) and create one scheduled message per send.
+
+Statuses and webhooks for scheduled vs sent messages are covered in [Message lifecycle](/concepts/message-lifecycle).
+
 ## Confirming a send
 
 Fetch any message by uuid with [`GET /v1/messages/{uuid}`](/api-reference/messages/retrieve-a-message). Prefer [webhooks](/webhooks/overview) in production; the GET is for confirmation and debugging.

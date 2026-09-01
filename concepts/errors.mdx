@@ -106,6 +106,15 @@ When a send fails immediately and synchronously, you get `422` with the provider
   </Accordion>
 </AccordionGroup>
 
+## Best practices
+
+- Branch on `code` (and field keys under `errors`), never on `message` text — wording can change.
+- Handle `429` by waiting for the rate-limit window; respect any `Retry-After` if present.
+- Treat provider-style `422` bodies as caller-fixable; treat `500` / `502` / `503` as transient.
+- Prefer [webhooks](/webhooks/overview) over polling for delivery outcomes.
+- Always send an [Idempotency-Key](/concepts/idempotency) when retrying writes.
+- Log the full response body plus `X-Request-Id` for support.
+
 ## Getting help
 
 Quote the `X-Request-Id` from the failing response in your email to

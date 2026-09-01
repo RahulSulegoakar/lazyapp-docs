@@ -29,6 +29,7 @@
               "concepts/idempotency",
               "concepts/pagination",
               "concepts/errors",
+              "concepts/message-lifecycle",
               "concepts/capabilities",
               "guides/connecting-whatsapp"
             ]
