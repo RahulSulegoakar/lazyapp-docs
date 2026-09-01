@@ -38,6 +38,7 @@
             "group": "Sending",
             "pages": [
               "sending/messages",
+              "sending/message-options",
               "sending/templates",
               "sending/media",
               "sending/catalog",

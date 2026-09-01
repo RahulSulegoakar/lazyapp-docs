@@ -1,29 +1,48 @@
 ---
 title: "Rate limits"
-description: "Two limits apply: ours and Meta's."
+description: "Two limits apply: ours and Meta's — plus send-velocity guards."
 ---
 
-## LazyApp's limit
+## LazyApp's API limit
 
-Requests are limited per API key, 120 per minute by default. Every response tells you where you stand:
+Requests are limited **per API key**, **120 per minute** by default (`API_RATE_LIMIT_PER_MINUTE`). Capacity uses a fixed one-minute window. Every response tells you where you stand:
 
 ```http
 X-RateLimit-Limit: 120
 X-RateLimit-Remaining: 117
 ```
 
-Exceeding it returns `429`. Back off and retry — always with an
-[Idempotency-Key](/concepts/idempotency), so a retry cannot double-send.
+Exceeding it returns `429` with a `Retry-After` header (seconds to wait). Back off and retry — always with an [Idempotency-Key](/concepts/idempotency), so a retry cannot double-send.
 
-Requests with a missing or invalid key are limited separately, per IP, so failed authentication cannot consume a valid key's budget.
+```json
+{ "message": "Too Many Attempts." }
+```
+
+Separate keys do **not** share a bucket. Create extra keys for access control (scopes, per-number restriction), not for throughput — ask support if you need a higher ceiling on one key.
+
+Requests with a missing or invalid key are limited separately, **per IP** (`30` failed auth attempts per minute by default), so failed authentication cannot consume a valid key's budget.
+
+OTP endpoints use a tighter per-key limiter on top of the general `/v1` limit.
 
 Need a higher ceiling? Email [support@lazyapp.in](mailto:support@lazyapp.in) with your expected peak.
+
+## Send velocity (abuse guards)
+
+Independent of HTTP rate limits, LazyApp refuses sends that look abusive **before** they reach Meta — protecting your number's quality rating:
+
+| Guard | Default | Stable `code` |
+| --- | --- | --- |
+| Workspace burst | 600 sends / minute / workspace·mode | `send_burst_limit` |
+| Per recipient | 20 sends / hour / recipient | `recipient_rate_limit` |
+| Failure rate | ≥ 50% failed in the last 50 outbound (15 min window) | `failure_rate_paused` |
+
+These return `422` with `code`, not `429`. Slow down, fix bad recipients, or contact support to raise a ceiling. See [Errors](/concepts/errors).
 
 ## Meta's messaging limit
 
 Distinct, and usually the one that constrains you. Meta caps how many unique users a number may message in 24 hours, and raises the tier as you demonstrate good quality: 1K, 10K, 100K, then unlimited.
 
-LazyApp paces [broadcasts](/sending/broadcasts) to your current tier rather than firing everything and collecting failures. `GET /v1/capabilities` reports the tier and the number's quality rating.
+LazyApp paces [broadcasts](/sending/broadcasts) to your current tier rather than firing everything and collecting failures. [`GET /v1/capabilities`](/concepts/capabilities) reports the tier and the number's quality rating — that is LazyApp's equivalent of an "account health" check.
 
 <Warning>
   Quality is what moves the tier. Recipients marking you as spam or blocking you drives the
@@ -47,7 +66,15 @@ async function send(body, attempt = 1) {
     body: JSON.stringify(body),
   });
 
-  const retryable = response.status === 429 || response.status >= 500;
+  if (response.status === 429) {
+    const retryAfter = Number(response.headers.get('Retry-After') || 1);
+    if (attempt < 5) {
+      await new Promise((r) => setTimeout(r, retryAfter * 1000));
+      return send(body, attempt + 1);
+    }
+  }
+
+  const retryable = response.status >= 500;
 
   if (retryable && attempt < 5) {
     const wait = Math.min(2 ** attempt * 250, 8000) + Math.random() * 250;
@@ -61,4 +88,11 @@ async function send(body, attempt = 1) {
 ```
 </CodeGroup>
 
-Add jitter. Without it, a fleet of workers that hit the limit together will retry together and hit it again.
+Add jitter on `5xx`. Without it, a fleet of workers that hit an outage together will retry together and hit it again.
+
+## Tips
+
+- Prefer [webhooks](/webhooks/overview) over polling for delivery status.
+- Use [cursor pagination](/concepts/pagination) instead of refetching large lists.
+- Cache [`GET /v1/capabilities`](/concepts/capabilities) for a few minutes.
+- One well-scoped key is enough for throughput; extra keys are for isolation.

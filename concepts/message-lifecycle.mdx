@@ -44,6 +44,15 @@ After accept (or after a schedule fires), the message row uses:
 
 `POST /v1/messages` returning `201` means **accepted**, not delivered. Poll [`GET /v1/messages/{uuid}`](/api-reference/messages/retrieve-a-message) only for debugging; subscribe to [webhooks](/webhooks/events) in production.
 
+## Which status a new message gets
+
+| You send | Initial result |
+| --- | --- |
+| No `send_at` | Message created; response is `201` with status typically `queued` or already `sent` / `failed` if the provider answered synchronously |
+| `send_at` in the future | Scheduled row; response is `202` with status `pending` |
+
+There is no draft or multi-platform `partial` state — one send targets one WhatsApp number and one contact.
+
 ## What you can do
 
 | Operation | When |
@@ -52,6 +61,7 @@ After accept (or after a schedule fires), the message row uses:
 | Fetch message | Any time after accept, by LazyApp uuid |
 | Download inbound media | After `message.received` with media |
 | Retry a failed *schedule* | Create again with a new `Idempotency-Key` / body key — there is no separate retry endpoint |
+| Unpublish / edit delivered | Not supported by WhatsApp Cloud API for business-sent messages |
 
 There is no unpublish: WhatsApp does not let you delete another person's delivered message via the business API the way some social networks do. Contacts can delete for themselves; you may see `message.deleted` when coexistence reports a revoke.
 

@@ -1,0 +1,60 @@
+---
+title: "Message options"
+description: "WhatsApp-specific fields on a send — connection choice, replies, TTL, metadata."
+---
+
+Social APIs often bury network-specific knobs in a `platformSpecificData` bag. WhatsApp is one platform, so LazyApp puts the options on the message itself.
+
+## Choose which number sends
+
+Workspaces can have more than one connected number. Omit both fields to use the default.
+
+```json
+{
+  "type": "text",
+  "to": "+919812345670",
+  "body": "Your order left the warehouse.",
+  "phone_number_id": "123456789012345"
+}
+```
+
+Or address the LazyApp connection:
+
+```json
+{ "connection_uuid": "9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d" }
+```
+
+API keys can be restricted to specific numbers; using a disallowed id returns `403`.
+
+## Reply in a thread
+
+```json
+{
+  "type": "text",
+  "to": "+919812345670",
+  "body": "Yes, that size is in stock.",
+  "context": { "message_id": "wamid.HBgMOTE5ODEyMzQ1Njcw" }
+}
+```
+
+## Time-to-live on schedules
+
+With `send_at`, set `ttl_seconds` so a late reminder is dropped instead of arriving hours late. See [scheduling](/sending/messages#scheduling).
+
+Direct Send (utility / authentication without a pre-approved template) also takes `ttl_seconds` with Meta's category-specific bounds — see the [Direct Send](/api-reference/messages/send-a-direct-send-message) endpoint.
+
+## Metadata
+
+Up to 20 string values. Echoed on webhooks for reconciliation:
+
+```json
+{ "metadata": { "order_id": "1042", "warehouse": "BOM-1" } }
+```
+
+## Interactive shapes
+
+Buttons, lists, CTA URLs, flows, address collection, and catalog / product messages all use `type: interactive` with an `interactive` object. The contact's choice arrives as `message.received`. Details and examples live on [Messages](/sending/messages#types).
+
+## What is not here
+
+There is no Twitter-thread, Instagram-Story, or TikTok-privacy bag. LazyApp is WhatsApp-only. For number health and feature gates, use [`GET /v1/capabilities`](/concepts/capabilities).

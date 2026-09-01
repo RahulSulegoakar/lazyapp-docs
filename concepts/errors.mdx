@@ -24,8 +24,18 @@ Send refusals also carry a stable `code` so your client can branch without strin
 | `contact_suppressed` | The contact opted out of all messages | Do not retry |
 | `marketing_opt_out` | The contact opted out of marketing | Do not send marketing; transactional may still work |
 | `no_connection` | No WhatsApp connection is configured, or none matches the number asked for | Tell the business to finish setup |
+| `send_burst_limit` | Workspace hit its per-minute send ceiling | Back off; see [rate limits](/reference/rate-limits) |
+| `recipient_rate_limit` | Too many messages to this contact in the last hour | Slow down to this recipient |
+| `failure_rate_paused` | Most recent outbound messages failed | Fix recipients / connection before retrying |
 
 Check `service_window` on [`GET /v1/contacts/{contact}`](/api-reference/contacts/retrieve-a-contact) before sending to avoid the closed-window refusal.
+
+### Stability contract
+
+- `code` values are stable once shipped. Build retries and i18n against them.
+- The `message` string can change freely. Treat it as display-only.
+- New codes may be added at any time. Removing a code is a breaking change.
+- Validation failures use the Laravel `errors` map (field → messages), not `code`.
 
 Validation failures add a per-field `errors` map:
 
@@ -109,10 +119,11 @@ When a send fails immediately and synchronously, you get `422` with the provider
 ## Best practices
 
 - Branch on `code` (and field keys under `errors`), never on `message` text — wording can change.
-- Handle `429` by waiting for the rate-limit window; respect any `Retry-After` if present.
+- Handle `429` by honouring `Retry-After`; see [rate limits](/reference/rate-limits).
 - Treat provider-style `422` bodies as caller-fixable; treat `500` / `502` / `503` as transient.
 - Prefer [webhooks](/webhooks/overview) over polling for delivery outcomes.
 - Always send an [Idempotency-Key](/concepts/idempotency) when retrying writes.
+- Monitor [`GET /v1/capabilities`](/concepts/capabilities) for quality and messaging-limit tier changes.
 - Log the full response body plus `X-Request-Id` for support.
 
 ## Getting help
