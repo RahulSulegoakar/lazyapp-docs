@@ -3,9 +3,34 @@ title: "Broadcasts"
 description: "Template sends to many contacts, with compliance built in."
 ---
 
-A broadcast sends one approved template to a segment or an explicit list of numbers.
+A broadcast sends one approved **marketing** template to a saved segment or an explicit list of phone numbers. LazyApp creates the campaign, resolves the audience, paces sends to your number's Meta messaging tier, and tracks delivery through to read receipts.
 
-```bash
+<Note>
+Each successful recipient send is one billable outbound message on your LazyApp wallet (or your platform customer's balance). Meta's template conversation fees are separate and bill to your WABA. See [Pricing](/billing/overview) and [WhatsApp message rates](/billing/whatsapp-rates).
+</Note>
+
+## Quick start
+
+LazyApp uses **one create call** with recipients inline — there is no separate add-recipients or send endpoint like some multi-step campaign APIs.
+
+<CodeGroup>
+```bash Create and start now
+curl https://lazyapp.in/v1/broadcasts \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "August sale",
+    "template_name": "seasonal_offer",
+    "language": "en",
+    "phone_numbers": ["+919812345670", "+919812345671"],
+    "variable_map": {
+      "body": ["20% off", "Sunday"]
+    },
+    "start": true
+  }'
+```
+
+```bash Create a draft, start later
 curl https://lazyapp.in/v1/broadcasts \
   -H "Authorization: Bearer $LAZYAPP_API_KEY" \
   -H "Content-Type: application/json" \
@@ -14,14 +39,109 @@ curl https://lazyapp.in/v1/broadcasts \
     "template_name": "seasonal_offer",
     "language": "en",
     "contact_segment_id": 12,
-    "schedule_at": "2026-08-20T10:00:00+05:30",
-    "quiet_hours": { "start": "21:00", "end": "09:00", "timezone": "Asia/Kolkata" },
-    "frequency_cap_days": 7,
     "start": false
   }'
+
+curl -X POST https://lazyapp.in/v1/broadcasts/{uuid}/start \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+</CodeGroup>
+
+The create response includes `uuid`, `status`, and `stats`. Poll [`GET /v1/broadcasts/{uuid}`](/api-reference/broadcasts/retrieve-a-broadcast) while `status` is `running`, or subscribe to [`campaign.*`](/webhooks/events#campaigns) webhooks.
+
+## Create fields
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `name` | Yes | Label in the console and webhooks |
+| `template_name` | Yes | Must be an **approved marketing** template in this workspace |
+| `language` | Yes | Template language code (for example `en` or `en_US`) |
+| `phone_numbers` | One of these | Up to **50,000** E.164 numbers |
+| `contact_segment_id` | One of these | Integer id of a segment created in the console |
+| `variable_map` | No | Static template parameters — see below |
+| `schedule_at` | No | ISO 8601 datetime. Status becomes `scheduled` when set without `start: true` |
+| `quiet_hours` | No | `{ "start": "21:00", "end": "09:00", "timezone": "Asia/Kolkata" }` |
+| `frequency_cap_days` | No | Skip contacts who received marketing inside this window (1–365 days) |
+| `whatsapp_connection_id` | No | Internal connection id when the workspace has multiple numbers |
+| `start` | No | When `true`, starts immediately after create |
+
+There is no `profileId`, `accountId`, or `platform` field — the API key already scopes the request to one workspace and mode (`live` / `test`).
+
+## Template variables
+
+Pass static placeholder values in `variable_map`. They are sent **the same to every recipient**:
+
+```json
+{
+  "variable_map": {
+    "header": "Summer sale",
+    "body": ["Asha", "ORD-1042"]
+  }
+}
 ```
 
-Target either `contact_segment_id` or `phone_numbers` (up to 50,000).
+- `header` fills a text header variable when the template has one.
+- `body` is an ordered array matching `{{1}}`, `{{2}}`, … in the template body.
+
+The number of `body` entries must match the template's placeholder count. A mismatch makes Meta reject the send (parameter-count error).
+
+<Warning>
+LazyApp does **not** resolve contact fields per recipient inside a broadcast (no Zernio-style `variableMapping` from `name` / `phone` / `email`). Every recipient gets the same parameter values. For per-contact copy, send with [`POST /v1/messages`](/sending/messages) in your own loop or workflow, or precompute segments with different broadcasts.
+</Warning>
+
+## Recipients
+
+Target either:
+
+1. **`phone_numbers`** — explicit E.164 list (`+919812345670`).
+2. **`contact_segment_id`** — a saved segment from the console (filtered contacts).
+
+Recipients must already exist as **contacts** in the workspace with **granted marketing consent**. Numbers that are not contacts, or contacts without consent, are counted in `stats.excluded` with a reason — they are never sent.
+
+Workflow for a cold list:
+
+```bash
+# 1. Create the contact
+curl https://lazyapp.in/v1/contacts \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"phone_number": "+919812345670", "name": "Asha"}'
+
+# 2. Record marketing consent from your opt-in flow
+curl https://lazyapp.in/v1/contacts/{contact}/consent \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "granted": true,
+    "purpose": "marketing",
+    "consent_text": "I agree to receive promotional messages on WhatsApp",
+    "proof_reference": "form-submission-1042",
+    "captured_by": "website-checkout"
+  }'
+
+# 3. Include the number in the broadcast
+```
+
+There is no public API to create contact segments today — build segments in the console, then pass the numeric `contact_segment_id` to the API.
+
+## Scheduling
+
+Set `schedule_at` on create and omit `start` (or pass `"start": false`):
+
+```json
+{
+  "name": "Diwali blast",
+  "template_name": "festive_offer",
+  "language": "en",
+  "phone_numbers": ["+919812345670"],
+  "schedule_at": "2026-11-01T10:00:00+05:30",
+  "start": false
+}
+```
+
+The broadcast stays `scheduled` until LazyApp's scheduler starts it at `schedule_at`, or you call [`POST /v1/broadcasts/{uuid}/start`](/api-reference/broadcasts/start-a-broadcast) early.
+
+There is no separate `POST …/schedule` endpoint — scheduling is a field on create.
 
 ## Compliance is enforced at send time, not create time
 
@@ -43,7 +163,31 @@ This is deliberate. A broadcast created on Monday and sent on Friday respects th
   </Card>
 </CardGroup>
 
-Excluded recipients are recorded with a reason, so you can explain exactly why someone did not receive a campaign.
+### Exclusion reasons
+
+When you start a broadcast, `stats` breaks down the audience:
+
+| `stats` field | Meaning |
+| --- | --- |
+| `audience` | Total rows (eligible + excluded) |
+| `excluded` | Skipped before send |
+| `pending` | Waiting to send |
+| `sent` | Handed to Meta |
+| `delivered` | Delivery confirmed |
+| `read` | Read receipt received |
+| `failed` | Send or delivery failed |
+
+Excluded recipients are stored with a reason code (visible in the console). Common codes:
+
+| Reason | Cause |
+| --- | --- |
+| `unknown_contact` | Phone is not a contact in this workspace |
+| `no_marketing_consent` | No granted marketing consent on file |
+| `suppressed` | Contact opted out of marketing |
+| `frequency_cap` | Already received marketing inside `frequency_cap_days` |
+| `quiet_hours` | Send time falls in configured quiet hours |
+| `country_excluded` | Country filter on the campaign (console) |
+| `marketing_limit` | Per-contact daily marketing cap reached |
 
 ## Recording consent from your own opt-in flow
 
@@ -64,19 +208,47 @@ curl https://lazyapp.in/v1/contacts/{contact}/consent \
 
 Consent is evidence, not just a flag — `consent_text`, `proof_reference` and `captured_by` are stored exactly as given. Granting marketing consent also lifts a matching suppression, so someone who just opted in on your site is not still opted out.
 
-## Starting and watching
+## Status and webhooks
 
-Create with `"start": true`, or start later:
+| Status | Meaning |
+| --- | --- |
+| `draft` | Created, not scheduled or started |
+| `scheduled` | Waiting for `schedule_at` |
+| `running` | Sends in progress |
+| `completed` | All recipients processed |
+| `failed` | Stopped with an error (for example template missing) |
+| `paused` / `stopped` | Console-only lifecycle states |
 
-```bash
-curl -X POST https://lazyapp.in/v1/broadcasts/{uuid}/start \
-  -H "Authorization: Bearer $LAZYAPP_API_KEY"
-```
+Webhook events:
 
-`GET /v1/broadcasts/{uuid}` returns live `stats`. You also receive `campaign.started`, `campaign.completed` and `campaign.failed` [webhooks](/webhooks/events).
+| Event | When |
+| --- | --- |
+| `campaign.started` | Sending began |
+| `campaign.completed` | All batches finished |
+| `campaign.failed` | Campaign stopped early |
 
-<Note>
-  Marketing templates need an opt-in you can evidence. Broadcasting to a purchased list is
-  the fastest route to having your number's quality rating cut and your messaging limit
-  reduced.
-</Note>
+Per-message delivery still arrives on the usual [`message.*`](/webhooks/events#messages) events for each recipient.
+
+<Warning>
+Marketing templates need an opt-in you can evidence. Broadcasting to a purchased list is
+the fastest route to having your number's quality rating cut and your messaging limit
+reduced.
+</Warning>
+
+## What we skip (Zernio-style)
+
+| Zernio | LazyApp |
+| --- | --- |
+| Create → add recipients → send (three calls) | One `POST /v1/broadcasts` with `phone_numbers` or `contact_segment_id` |
+| `profileId` + `accountId` + `platform: whatsapp` | Workspace scoped by API key |
+| `variableMapping` from contact fields | Static `variable_map` only |
+| `POST …/recipients` with `contactIds` or `useSegment` | Recipients on create; segments by id |
+| `POST …/schedule` | `schedule_at` on create |
+| Utility/auth templates in broadcasts | **Marketing** templates only |
+
+## Related
+
+- [Templates](/sending/templates) — create and approve marketing templates
+- [Messages](/sending/messages) — one-off template sends with per-recipient control
+- [Webhooks](/webhooks/events#campaigns) — `campaign.*` events
+- [Pricing](/billing/overview) — wallet and usage
