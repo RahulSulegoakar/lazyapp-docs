@@ -1,0 +1,71 @@
+---
+title: "Pricing"
+description: "What LazyApp charges, how the wallet works, and how Meta message categories show up on usage."
+---
+
+LazyApp is WhatsApp-only. There are no connected-social-account seats, ads meters, SMS segments, or X API pass-throughs on this page.
+
+You pay LazyApp in two layers:
+
+1. **A subscription plan** for the product (inbox, API, automations, …).
+2. **A prepaid wallet** that usage draws down when outbound messages are billable.
+
+Platforms can put each [platform customer](/platform/overview) on `prepaid`, `postpaid`, or `inherit` billing and set spending limits — see [Tenant usage](/platform/usage).
+
+## Plans
+
+Public plan cards (INR) from [lazyapp.in/pricing](https://lazyapp.in/pricing):
+
+| Plan | Price | Aimed at |
+| --- | --- | --- |
+| **Starter** | ₹499 / month | One WhatsApp Business number, templates, shared inbox, manual broadcasts |
+| **Growth** | ₹1,499 / month | Catalog, scheduled broadcasts, tags, automations, reports |
+| **Business** | ₹2,999 / month | Small teams — assignment, handoff, shared inbox workflows |
+
+Checkout and wallet top-ups run through the billing provider configured for the workspace (Dodo Payments when enabled). Top-up packages available in the console include **$10**, **$25**, **$50**, and **$100**. New billing accounts can claim **onboarding credits** (default **$10**) once.
+
+Exact product SKUs and whether a plan is checkout-ready depend on your deployment's `config/billing.php` product ids — the console only offers plans and packages that are configured.
+
+## Wallet and sends
+
+Billable outbound messages create a [usage](#usage-ledger) row and debit the workspace wallet (or the platform customer's wallet / postpaid balance). When the wallet is empty or a spending limit is hit, sends return **`402`** — treat that as a billing state, not a transient error. See [Errors](/concepts/errors).
+
+Auto-recharge (when enabled) tops up when the balance falls below a threshold.
+
+## Usage ledger
+
+Every outbound message can produce a usage record with:
+
+| Field | Meaning |
+| --- | --- |
+| `pricing_category` | `service`, `utility`, `authentication`, or `marketing` |
+| `recipient_region` | Resolved from the recipient's E.164 prefix |
+| `meta_rate` | Meta-category rate stored for the region (transparency / cost) |
+| `lazyapp_charge` | What LazyApp bills for that send |
+| Tax and payment fee | Applied on the LazyApp charge |
+| `is_free` / `free_reason` | When the send did not debit |
+
+Workspace owners review this under **Usage** in the console. Platforms pull the same economics via [`GET /v1/platform/customers/{customer}/usage`](/platform/usage).
+
+There is no public “list every country rate” API today — rates live in the workspace pricing table and change when Meta revises categories or regions.
+
+## What Meta does
+
+Meta defines conversation / message categories and country rates. LazyApp records those categories on usage and links operators to Meta's published cards. Keep a valid payment method on the WhatsApp Business Account in [Meta Business Suite](https://business.facebook.com) when Meta requires it for your connection type — otherwise delivery can stop even if your LazyApp wallet is funded.
+
+Details and free-window rules: [WhatsApp message rates](/billing/whatsapp-rates).
+
+## What LazyApp does not sell
+
+| Zernio-style meter | LazyApp |
+| --- | --- |
+| Graduated “connected social accounts” | Not applicable — WhatsApp [connections](/concepts/workspaces-and-modes), not Instagram/X seats |
+| SMS / 10DLC / voice carrier minutes | Not sold |
+| Ads active-ad meters | Not sold |
+| Dedicated phone-number SKUs ($3–$21) | Numbers come from Meta / your WABA connection flow, not a LazyApp number shop |
+
+## Related
+
+- [WhatsApp message rates](/billing/whatsapp-rates) — categories, free rules, indicative India figures
+- [Tenant usage](/platform/usage) — platform customer dashboards
+- [Rate limits](/reference/rate-limits) — HTTP and send-velocity caps (not money)

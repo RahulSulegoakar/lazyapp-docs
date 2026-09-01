@@ -1,0 +1,65 @@
+---
+title: "WhatsApp message rates"
+description: "Categories Meta prices, what is free in LazyApp, and how calling fits in."
+---
+
+WhatsApp messaging has **categories** and **regions**. LazyApp records both on the [usage ledger](/billing/overview#usage-ledger) and debits your wallet for the LazyApp charge when a send is not free.
+
+## Categories
+
+| Category | Typical use | Who usually starts it |
+| --- | --- | --- |
+| **Service** | Free-form replies inside the 24-hour [customer service window](/concepts/glossary#customer-service-window) | Contact (then you reply) |
+| **Utility** | Order updates, reminders, account notices (approved templates) | Business |
+| **Authentication** | OTPs and login codes (approved templates) | Business |
+| **Marketing** | Offers, promotions, broadcasts (approved templates) | Business |
+
+Free-form (`type: text`, media, interactive, …) is treated as **service**. Templates use the category on the template (or the `template.category` you send).
+
+## What is free in LazyApp
+
+Configurable in `pricing.free_rules` (defaults):
+
+| Rule | Default | Meaning |
+| --- | --- | --- |
+| Service inside the customer service window | On | No LazyApp debit for those service sends |
+| Utility inside the window | Off | Utility templates still follow the rate table unless you enable the free rule or the rate row marks `free_within_service_window` |
+| Monthly free service allowance | **1,000** per workspace·mode·month | Additional free service messages after the window rules, while the allowance lasts |
+| Failed deliveries | Not charged | Failed outbound does not debit unless you enable charging failures |
+
+Meta's own promotions (for example utility free in-window on Meta's side) can change independently. Treat the usage row's `is_free` / `free_reason` as the source of truth for what LazyApp billed.
+
+## Indicative India rates (Meta, INR)
+
+Marketing copy on [lazyapp.in/pricing](https://lazyapp.in/pricing) shows **indicative** per-message figures for India. They are not a contract — Meta revises rates and regions.
+
+| Category | Indicative rate (₹) |
+| --- | --- |
+| Marketing | ~₹0.78–0.90 / message |
+| Utility | ~₹0.12–0.15 / message |
+| Authentication | ~₹0.12–0.20 / message |
+| Service (customer-initiated window) | Free |
+
+For the full country matrix Meta publishes, see [Meta WhatsApp pricing](https://developers.facebook.com/docs/whatsapp/pricing). LazyApp's ledger stores USD region rates for DEFAULT, INDIA, NORTH_AMERICA, BRAZIL, and more as configured for your deployment — check **Usage** in the console for what your workspace actually charged.
+
+## Regions
+
+Recipient country is inferred from the E.164 dialling prefix (longest match). Unknown prefixes fall back to `DEFAULT`. Examples of configured prefixes include `91` → INDIA, `1` → NORTH_AMERICA, `55` → BRAZIL — see `config/pricing.php` in the application for the full map.
+
+## Calls
+
+WhatsApp Calling is a [capability](/concepts/capabilities) on the connection. Business-initiated calling is subject to **Meta's** calling policies and per-minute fees by destination country; Meta blocks business-initiated calls in some countries while inbound may still work.
+
+LazyApp does **not** publish a separate carrier-minute rate card or recording add-on like a CPaaS voice product. Do not assume Zernio-style “carrier leg + Meta leg” invoices from LazyApp. Use Meta's calling documentation for destination fees, and confirm calling is enabled on [`GET /v1/capabilities`](/concepts/capabilities) before you build UX around it.
+
+## Payment method on the WABA
+
+<Warning>
+Meta needs a valid payment method on the WhatsApp Business Account for template delivery (and calling, when enabled) according to Meta's rules for your account. Without one, Meta can block delivery once free tiers are exhausted — regardless of your LazyApp wallet balance.
+</Warning>
+
+## Related
+
+- [Pricing](/billing/overview) — plans, wallet, what LazyApp does not sell
+- [Templates](/sending/templates) — categories and approval
+- [Tenant usage](/platform/usage) — platform customer spend APIs

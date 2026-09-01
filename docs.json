@@ -43,6 +43,13 @@
             ]
           },
           {
+            "group": "Billing",
+            "pages": [
+              "billing/overview",
+              "billing/whatsapp-rates"
+            ]
+          },
+          {
             "group": "Sending",
             "pages": [
               "sending/messages",

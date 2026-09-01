@@ -107,7 +107,11 @@ LazyApp's OTP send/check API for phone verification flows. See [Verify](/sending
 
 ### WABA
 
-WhatsApp Business Account — Meta's container for your business numbers. LazyApp stores it as part of a [connection](#connection). Meta bills conversation and calling fees to the WABA's payment method according to Meta's pricing.
+WhatsApp Business Account — Meta's container for your business numbers. LazyApp stores it as part of a [connection](#connection). Outbound sends are metered on LazyApp's [usage ledger](/billing/overview); Meta may also require a payment method on the WABA depending how the number was connected. See [WhatsApp message rates](/billing/whatsapp-rates).
+
+### Wallet
+
+Prepaid balance on a workspace (or [platform customer](#platform-customer)) that billable message usage draws down. Empty wallet or spending limit → HTTP `402`. See [Pricing](/billing/overview).
 
 ### Webhook
 
