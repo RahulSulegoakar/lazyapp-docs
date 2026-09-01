@@ -1,0 +1,39 @@
+---
+title: "Two-step verification"
+description: "Protect password sign-in with a TOTP authenticator app, recovery codes, and optional passkeys."
+---
+
+Two-step verification asks for a six-digit code from an authenticator app whenever you sign in with your password. Any TOTP app works: Google Authenticator, 1Password, Authy, Apple Passwords.
+
+Passkeys are managed on the same **Settings → Security** page and let you sign in without a password at all.
+
+## Turning on TOTP
+
+In **Settings → Security**, under two-step verification:
+
+1. **Confirm your password** when prompted. Enabling and disabling re-asks for it.
+2. **Scan the QR code** with your authenticator app and enter the code it shows.
+3. **Save your recovery codes.** You get single-use codes for signing in if you lose the authenticator device. Store them somewhere safe; they are shown at setup. LazyApp stores them hashed, not in plain text.
+
+If you signed up with Google and never set a password, create one first under **Settings → Security**. There is nothing for two-step verification to protect on an account with no password, so enrollment requires one.
+
+## What it protects
+
+- **Protected**: password sign-in. Every password login is challenged for a TOTP code or a recovery code.
+- **Not challenged by LazyApp 2FA**: Google OAuth sign-in. That already carries whatever second factor your Google account enforces — protect it there.
+- **Passkeys**: a separate factor. A registered passkey can sign you in without the password flow.
+
+## Passkeys
+
+Under **Settings → Security** you can register one or more WebAuthn passkeys (security key, Touch ID, Windows Hello, and similar). Naming them helps you tell devices apart. Removing a passkey requires confirmation; password confirmation is required for management when that Fortify option is enabled.
+
+Use a passkey when you want phishing-resistant sign-in. Keep recovery codes or a second passkey so you are not locked out if one device is lost.
+
+## Losing access
+
+- **Lost the authenticator, have recovery codes**: sign in with a recovery code, then disable and re-enroll two-step verification with the new device.
+- **Lost both**: contact [support@lazyapp.in](mailto:support@lazyapp.in) from your account email. Identity is verified manually before anything is reset.
+
+## Related
+
+- [Security overview](/security/overview) — sessions, roles, and API key controls

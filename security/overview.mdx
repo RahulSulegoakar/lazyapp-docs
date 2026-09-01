@@ -1,0 +1,69 @@
+---
+title: "Security overview"
+description: "How access to a LazyApp workspace is protected — sign-in, sessions, roles, API keys, and what is recorded."
+---
+
+This page summarizes the controls that protect a LazyApp workspace: how people sign in, how access is scoped once they are in, and what gets recorded. It is for the person filling in a security review as much as for the developer setting things up.
+
+API authentication is separate — see [Authentication](/authentication) for Bearer keys, scopes, and IP restrictions.
+
+## Signing in
+
+LazyApp accounts support:
+
+| Method | Notes |
+| --- | --- |
+| Email + password | Passwords meet production strength rules and are screened against public breach corpora (see below). Can be combined with [two-step verification](/security/two-factor). |
+| Google | OAuth sign-in. The stable Google account id is the identity key, so an email change on Google does not silently break the link. You can also connect Google later under account settings. |
+| Passkey (WebAuthn) | Passwordless sign-in with a hardware key or platform authenticator. Managed under **Settings → Security**. |
+
+There is **no** GitHub login, and **no** enterprise SAML / OIDC SSO or SCIM directory sync in the product today. If your security review requires IdP-enforced SSO, talk to us about roadmap timing — do not assume Zernio-style SSO endpoints exist.
+
+### Breached-password screening
+
+In production, every password LazyApp accepts (signup, reset, change) must be at least 12 characters with mixed case, letters, numbers and symbols, and is checked against the Have I Been Pwned corpus via Laravel's `uncompromised` rule (k-anonymity: only a short SHA-1 prefix leaves our infrastructure). A password that appears in a known breach is rejected.
+
+## Two-step verification and passkeys
+
+TOTP authenticator apps plus recovery codes protect password sign-in. Passkeys are a separate, stronger option for passwordless login. Details: [Two-step verification](/security/two-factor).
+
+## Sessions and devices
+
+Under **Settings → Sessions** every account has:
+
+- **A device list.** Each active session with enough context to recognise it, and a per-device sign-out.
+- **Sign out other sessions.** Revokes every session except the one you are on.
+
+## Workspace roles
+
+Access inside a workspace is role-based. Exactly one **owner** exists per workspace at any moment (ownership is not granted by invite).
+
+| Role | What it can do |
+| --- | --- |
+| **Owner** | Everything: billing, ownership, workspace deletion, members, API keys, webhooks, connections. |
+| **Administrator** | Broad product access. Can invite people. Cannot delete the workspace; membership add/update/remove permissions stay with the owner. |
+| **Developer** | API keys, connections, webhooks, templates, media, flows, send, inbox, analytics. |
+| **Billing administrator** | Billing, invoices and spend. No messaging. |
+| **Support manager** | Inbox, contacts, templates, media, analytics, invitations. |
+| **Support agent** | Inbox conversations and replies only. |
+| **Marketing manager** | Campaigns, templates, media, contacts, send, analytics. |
+| **Automation editor** | Automations, flows, templates, inbox view, analytics. |
+| **Analyst** | Read-only analytics and spend. |
+| **Read-only user** | Read-only inbox. |
+| **Member** | General product access (inbox, send, contacts, templates, media, campaigns, automations, flows, connections, analytics). Cannot manage workspace settings or members. |
+
+Invites are bound to a specific email, use a single-use code, and expire after **3 days** (resend extends expiry). Accepting an invite never assigns `owner`.
+
+## API keys and webhooks
+
+Workspace credentials are managed in the console by roles that hold `api_keys:manage` / `webhooks:manage` (owner, admin, developer). Keys can be limited by [scopes](/reference/scopes), phone numbers, and IPs — see [Authentication](/authentication). That is the LazyApp equivalent of "profile-scoped" credentials: scope to WhatsApp numbers, not social profiles.
+
+## Audit trail
+
+Sensitive actions write audit rows (who, what, when, IP when available), including team invitations created, cancelled and accepted, connection and webhook changes, and API key activity (shown on the API keys page). Contact consent events are visible on the contact. There is no separate public "team activity log" API; the console surfaces the trails above.
+
+## Related
+
+- [Two-step verification](/security/two-factor) — TOTP, recovery codes, passkeys
+- [Authentication](/authentication) — API keys for integrators
+- [Workspaces and modes](/concepts/workspaces-and-modes) — live vs test

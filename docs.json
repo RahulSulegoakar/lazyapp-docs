@@ -35,6 +35,13 @@
             ]
           },
           {
+            "group": "Security",
+            "pages": [
+              "security/overview",
+              "security/two-factor"
+            ]
+          },
+          {
             "group": "Sending",
             "pages": [
               "sending/messages",
