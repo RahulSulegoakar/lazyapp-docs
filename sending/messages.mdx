@@ -213,6 +213,10 @@ Add `send_at` and the response becomes `202` with a scheduled id instead of a se
 
 `ttl_seconds` drops the message if it could not be sent within that window — better than a reminder arriving six hours late. List with [`GET /v1/messages/scheduled`](/api-reference/messages/list-scheduled-messages) and cancel with `DELETE`.
 
+## Confirming a send
+
+Fetch any message by uuid with [`GET /v1/messages/{uuid}`](/api-reference/messages/retrieve-a-message). Prefer [webhooks](/webhooks/overview) in production; the GET is for confirmation and debugging.
+
 ## Metadata
 
 Attach up to 20 string values. They come back on webhooks, which makes reconciliation easy without a lookup table:

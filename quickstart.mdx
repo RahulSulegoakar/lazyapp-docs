@@ -1,156 +1,530 @@
 ---
 title: "Quickstart"
-description: "From nothing to a delivered WhatsApp message."
+description: "Authenticate, confirm a connection, and send your first WhatsApp message in minutes."
 ---
 
-You will create an API key, send a message, and receive the delivery status on a webhook.
+LazyApp is one WhatsApp API for developers, SaaS platforms, and businesses: send messages and templates, receive signed webhooks, run OTP verify, broadcasts, and flows — and white-label the same platform for your own customers. This page takes you from API key to a confirmed send — about five minutes.
 
-## Prerequisites
+**Base URL:** `https://lazyapp.in`
 
-- A LazyApp account and a workspace. Sign up at [lazyapp.in](https://lazyapp.in).
-- A connected WhatsApp number, or the sandbox number that comes with a new workspace.
-- A phone you can receive WhatsApp on, to be the recipient.
+<Info>
+  **Building a product where your users connect *their* WhatsApp numbers?** The send loop below is the same, but you'll want one workspace per platform customer, scoped keys, and webhook routing — start at the [platform guide](/platform/overview) after your first message.
+</Info>
 
-<Steps>
-  <Step title="Create an API key">
-    In the Developer Console, open **Settings → API keys** and create a key.
+---
 
-    Keys are shown once, at creation. Copy it straight into your secret store.
+## Authentication
 
-    Use a `sk_test_` key while you build. Test keys never reach a real phone, so you
-    cannot accidentally message a customer while wiring things up.
+All API requests require an API key as a Bearer token. There is no official SDK yet — every example below is plain HTTP.
 
-    <Warning>
-      Never put a key in frontend code. If you need to call LazyApp from a browser, see
-      [embedded components](/platform/embedded-components).
-    </Warning>
-  </Step>
+### Get your API key
 
-  <Step title="Say hello">
-    Every request is Bearer-authenticated and returns JSON.
+1. [Sign up](https://lazyapp.in) or log in
+2. Open **Settings → API keys**
+3. Click **Create API key**
+4. Copy the key immediately — you won't be able to see it again
 
-    <CodeGroup>
-    ```bash cURL
-    curl https://lazyapp.in/v1/messages \
-      -H "Authorization: Bearer $LAZYAPP_API_KEY" \
-      -H "Content-Type: application/json" \
-      -H "Idempotency-Key: quickstart-1" \
-      -d '{
+Use a `sk_test_` key while you build. Test keys never reach a real phone.
+
+### Set up the client
+
+<CodeGroup>
+```bash cURL
+export LAZYAPP_API_KEY="sk_test_..."
+
+curl https://lazyapp.in/v1/capabilities \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+```js Node
+const LAZYAPP_API_KEY = process.env.LAZYAPP_API_KEY;
+
+const response = await fetch('https://lazyapp.in/v1/capabilities', {
+  headers: { Authorization: `Bearer ${LAZYAPP_API_KEY}` },
+});
+
+const { data } = await response.json();
+```
+
+```python Python
+import os, requests
+
+LAZYAPP_API_KEY = os.environ["LAZYAPP_API_KEY"]
+
+response = requests.get(
+    "https://lazyapp.in/v1/capabilities",
+    headers={"Authorization": f"Bearer {LAZYAPP_API_KEY}"},
+)
+
+data = response.json()["data"]
+```
+
+```php PHP
+$response = Http::withToken(env('LAZYAPP_API_KEY'))
+    ->get('https://lazyapp.in/v1/capabilities');
+
+$data = $response->json('data');
+```
+</CodeGroup>
+
+**Key format:** `sk_test_` or `sk_live_` plus 40 characters. Keys are stored as SHA-256 hashes — they're only shown once at creation.
+
+**Security tips:** Use environment variables, create separate keys per app, grant the narrowest [scopes](/reference/scopes), and rotate periodically. See [Authentication](/authentication).
+
+<Warning>
+  Never put a key in frontend code. If you need LazyApp in a browser, see
+  [embedded components](/platform/embedded-components).
+</Warning>
+
+---
+
+## Key concepts
+
+- **Workspace** — Your team tenant. Your API key belongs to exactly one workspace; you never pass a workspace id.
+- **Mode** — `live` or `test`, taken from the key prefix. Test never reaches a real phone. Data in the two modes never mixes.
+- **Connection** — A WhatsApp Business Account plus its phone numbers inside the workspace.
+- **Message** — Anything you send or receive. Addressed by a stable `uuid`.
+- **Webhook** — How LazyApp pushes delivery, reads, replies, and template status to you.
+
+IDs in this API are UUIDs (like `9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d`). Each step below returns what the next step needs.
+
+---
+
+## Step 1: Confirm a connection
+
+You need at least one WhatsApp connection on the workspace. Connect a number in the console, or claim a LazyApp sandbox number in test mode.
+
+Then list what you have:
+
+<CodeGroup>
+```bash cURL
+curl https://lazyapp.in/v1/capabilities \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+```js Node
+const response = await fetch('https://lazyapp.in/v1/capabilities', {
+  headers: { Authorization: `Bearer ${process.env.LAZYAPP_API_KEY}` },
+});
+
+const { data } = await response.json();
+
+for (const connection of data) {
+  console.log(`${connection.display_phone_number}: ${connection.connection_uuid}`);
+}
+// → +919812345670: 9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d
+```
+
+```python Python
+result = requests.get(
+    "https://lazyapp.in/v1/capabilities",
+    headers={"Authorization": f"Bearer {os.environ['LAZYAPP_API_KEY']}"},
+).json()
+
+for connection in result["data"]:
+    print(f"{connection['display_phone_number']}: {connection['connection_uuid']}")
+# → +919812345670: 9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d
+```
+
+```php PHP
+$data = Http::withToken(env('LAZYAPP_API_KEY'))
+    ->get('https://lazyapp.in/v1/capabilities')
+    ->json('data');
+
+foreach ($data as $connection) {
+    echo "{$connection['display_phone_number']}: {$connection['connection_uuid']}\n";
+}
+```
+</CodeGroup>
+
+```json
+{
+  "data": [
+    {
+      "connection_uuid": "9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d",
+      "phone_number_id": "123456789012345",
+      "display_phone_number": "+919812345670",
+      "is_default": true,
+      "capabilities": {
+        "messages.text": true,
+        "messages.template": true
+      }
+    }
+  ]
+}
+```
+
+Most sends use the default connection automatically. Pass `phone_number_id` or `connection_uuid` only when you have several. See [Capabilities](/concepts/capabilities).
+
+---
+
+## Step 2: Send your first message
+
+<CodeGroup>
+```bash cURL
+curl https://lazyapp.in/v1/messages \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: quickstart-1" \
+  -d '{
+    "type": "text",
+    "to": "+919812345670",
+    "body": "Hello from LazyApp."
+  }'
+```
+
+```js Node
+const response = await fetch('https://lazyapp.in/v1/messages', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.LAZYAPP_API_KEY}`,
+    'Content-Type': 'application/json',
+    'Idempotency-Key': 'quickstart-1',
+  },
+  body: JSON.stringify({
+    type: 'text',
+    to: '+919812345670',
+    body: 'Hello from LazyApp.',
+  }),
+});
+
+const message = await response.json();
+console.log('Message sent:', message.uuid);
+```
+
+```python Python
+message = requests.post(
+    "https://lazyapp.in/v1/messages",
+    headers={
+        "Authorization": f"Bearer {os.environ['LAZYAPP_API_KEY']}",
+        "Idempotency-Key": "quickstart-1",
+    },
+    json={
         "type": "text",
         "to": "+919812345670",
-        "body": "Hello from LazyApp."
-      }'
-    ```
+        "body": "Hello from LazyApp.",
+    },
+).json()
 
-    ```js Node
-    const response = await fetch('https://lazyapp.in/v1/messages', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.LAZYAPP_API_KEY}`,
-        'Content-Type': 'application/json',
-        'Idempotency-Key': 'quickstart-1',
-      },
-      body: JSON.stringify({
-        type: 'text',
-        to: '+919812345670',
-        body: 'Hello from LazyApp.',
-      }),
-    });
+print(f"Message sent: {message['uuid']}")
+```
 
-    const message = await response.json();
-    ```
+```php PHP
+$message = Http::withToken(env('LAZYAPP_API_KEY'))
+    ->withHeader('Idempotency-Key', 'quickstart-1')
+    ->post('https://lazyapp.in/v1/messages', [
+        'type' => 'text',
+        'to' => '+919812345670',
+        'body' => 'Hello from LazyApp.',
+    ])
+    ->json();
 
-    ```python Python
-    import os, requests
+echo "Message sent: {$message['uuid']}\n";
+```
+</CodeGroup>
 
-    response = requests.post(
-        "https://lazyapp.in/v1/messages",
-        headers={
-            "Authorization": f"Bearer {os.environ['LAZYAPP_API_KEY']}",
-            "Idempotency-Key": "quickstart-1",
-        },
-        json={"type": "text", "to": "+919812345670", "body": "Hello from LazyApp."},
-    )
+A `201` means LazyApp accepted and sent it:
 
-    message = response.json()
-    ```
+```json
+{
+  "uuid": "9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d",
+  "request_id": "req_01J9Z4K7Q0",
+  "status": "sent",
+  "acceptance_status": "accepted",
+  "type": "text",
+  "provider_message_id": "wamid.HBgMOTE5ODEyMzQ1Njcw",
+  "error_message": null
+}
+```
 
-    ```php PHP
-    $response = Http::withToken(env('LAZYAPP_API_KEY'))
-        ->withHeader('Idempotency-Key', 'quickstart-1')
-        ->post('https://lazyapp.in/v1/messages', [
-            'type' => 'text',
-            'to' => '+919812345670',
-            'body' => 'Hello from LazyApp.',
-        ]);
-    ```
-    </CodeGroup>
+Save the `uuid` — you need it for the next step.
 
-    A `201` means LazyApp accepted and sent it:
+<Note>
+  A free-form text message only reaches someone inside the 24-hour customer-service
+  window — after they message you. Outside it, send an approved
+  [template](/sending/templates) instead. LazyApp enforces this server-side, so a send
+  outside the window fails with a clear error rather than silently vanishing.
+</Note>
 
-    ```json
-    {
-      "uuid": "9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d",
-      "request_id": "req_01J9Z4K7Q0",
-      "status": "sent",
-      "acceptance_status": "accepted",
-      "type": "text",
-      "provider_message_id": "wamid.HBgMOTE5ODEyMzQ1Njcw",
-      "error_message": null
+---
+
+## Step 3: Confirm it worked
+
+Fetch the message back — its `status` tells you where it is in the pipeline:
+
+<CodeGroup>
+```bash cURL
+curl "https://lazyapp.in/v1/messages/MESSAGE_UUID" \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+```js Node
+const check = await fetch(
+  `https://lazyapp.in/v1/messages/${message.uuid}`,
+  { headers: { Authorization: `Bearer ${process.env.LAZYAPP_API_KEY}` } },
+).then((r) => r.json());
+
+console.log(check.status);
+// → sent
+```
+
+```python Python
+check = requests.get(
+    f"https://lazyapp.in/v1/messages/{message['uuid']}",
+    headers={"Authorization": f"Bearer {os.environ['LAZYAPP_API_KEY']}"},
+).json()
+
+print(check["status"])
+# → sent
+```
+
+```php PHP
+$check = Http::withToken(env('LAZYAPP_API_KEY'))
+    ->get("https://lazyapp.in/v1/messages/{$message['uuid']}")
+    ->json();
+
+echo $check['status']; // sent
+```
+</CodeGroup>
+
+`status` moves through `queued` → `sent` → `delivered` → `read` (or `played` / `failed`). You'll also see the message in the [console](https://lazyapp.in). Prefer [webhooks](/webhooks/overview) for production instead of polling.
+
+**That's the whole loop** — connection, send, confirmation. Everything else is variations on this.
+
+---
+
+## One endpoint, every send mode
+
+The same `POST /v1/messages` call covers immediate sends, scheduling, and every message type:
+
+| You set | Result |
+| --- | --- |
+| No `send_at` | Sends immediately (`201`) |
+| `send_at` (+ optional `ttl_seconds`) | Schedules for later (`202`) |
+| `type: "template"` | Works outside the 24-hour window |
+| `type: "text"` / media / interactive / … | Free-form, window must be open |
+
+```json
+{
+  "type": "template",
+  "to": "+919812345670",
+  "template": { "name": "appointment_reminder", "language": "en" },
+  "send_at": "2026-09-02T09:00:00+05:30",
+  "ttl_seconds": 3600
+}
+```
+
+Message types, media, reactions, and quoting are covered in [Messages](/sending/messages).
+
+---
+
+## Step 4: Receive status on a webhook
+
+Register an endpoint so delivery and reads push to you:
+
+<CodeGroup>
+```bash cURL
+curl https://lazyapp.in/v1/webhooks \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://yourapp.example/webhooks/lazyapp",
+    "subscribed_events": ["message.delivered", "message.read", "message.failed"]
+  }'
+```
+
+```js Node
+await fetch('https://lazyapp.in/v1/webhooks', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.LAZYAPP_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    url: 'https://yourapp.example/webhooks/lazyapp',
+    subscribed_events: ['message.delivered', 'message.read', 'message.failed'],
+  }),
+});
+```
+
+```python Python
+requests.post(
+    "https://lazyapp.in/v1/webhooks",
+    headers={"Authorization": f"Bearer {os.environ['LAZYAPP_API_KEY']}"},
+    json={
+        "url": "https://yourapp.example/webhooks/lazyapp",
+        "subscribed_events": [
+            "message.delivered",
+            "message.read",
+            "message.failed",
+        ],
+    },
+)
+```
+
+```php PHP
+Http::withToken(env('LAZYAPP_API_KEY'))
+    ->post('https://lazyapp.in/v1/webhooks', [
+        'url' => 'https://yourapp.example/webhooks/lazyapp',
+        'subscribed_events' => ['message.delivered', 'message.read', 'message.failed'],
+    ]);
+```
+</CodeGroup>
+
+The response includes a signing `secret`, shown once. Use it to [verify every delivery](/webhooks/verifying) before you trust the body. Leave `subscribed_events` out to receive [everything](/webhooks/events).
+
+---
+
+## Beyond messaging
+
+Sending is the entry point. The same API key opens the rest of WhatsApp on LazyApp.
+
+### Send a template outside the window
+
+<CodeGroup>
+```bash cURL
+curl https://lazyapp.in/v1/messages \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "template",
+    "to": "+919812345670",
+    "template": {
+      "name": "order_shipped",
+      "language": "en",
+      "category": "utility",
+      "components": [
+        {
+          "type": "body",
+          "parameters": [
+            { "type": "text", "text": "1042" }
+          ]
+        }
+      ]
     }
-    ```
+  }'
+```
 
-    <Note>
-      A free-form text message only reaches someone inside the 24-hour
-      customer-service window — that is, after they message you. Outside it, send an
-      approved [template](/sending/templates) instead. LazyApp enforces this server-side,
-      so a send outside the window fails with a clear error rather than silently vanishing.
-    </Note>
-  </Step>
+```js Node
+await fetch('https://lazyapp.in/v1/messages', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.LAZYAPP_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    type: 'template',
+    to: '+919812345670',
+    template: {
+      name: 'order_shipped',
+      language: 'en',
+      category: 'utility',
+      components: [
+        {
+          type: 'body',
+          parameters: [{ type: 'text', text: '1042' }],
+        },
+      ],
+    },
+  }),
+});
+```
 
-  <Step title="Receive the result">
-    Sending is only half of it. Register an endpoint to hear what happened:
+```python Python
+requests.post(
+    "https://lazyapp.in/v1/messages",
+    headers={"Authorization": f"Bearer {os.environ['LAZYAPP_API_KEY']}"},
+    json={
+        "type": "template",
+        "to": "+919812345670",
+        "template": {
+            "name": "order_shipped",
+            "language": "en",
+            "category": "utility",
+            "components": [
+                {
+                    "type": "body",
+                    "parameters": [{"type": "text", "text": "1042"}],
+                }
+            ],
+        },
+    },
+)
+```
+</CodeGroup>
 
-    ```bash
-    curl https://lazyapp.in/v1/webhooks \
-      -H "Authorization: Bearer $LAZYAPP_API_KEY" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "url": "https://example.com/webhooks/lazyapp",
-        "subscribed_events": ["message.delivered", "message.read", "message.failed"]
-      }'
-    ```
+### Send an OTP
 
-    The response includes a signing `secret`, shown once. Use it to
-    [verify every delivery](/webhooks/verifying) before you trust the body.
+<CodeGroup>
+```bash cURL
+curl https://lazyapp.in/v1/otp \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"to": "+919812345670"}'
+```
 
-    Leave `subscribed_events` out to receive [everything](/webhooks/events).
-  </Step>
+```js Node
+await fetch('https://lazyapp.in/v1/otp', {
+  method: 'POST',
+  headers: {
+    Authorization: `Bearer ${process.env.LAZYAPP_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ to: '+919812345670' }),
+});
+```
 
-  <Step title="Go live">
-    Swap the `sk_test_` key for `sk_live_`. Nothing else changes.
+```python Python
+requests.post(
+    "https://lazyapp.in/v1/otp",
+    headers={"Authorization": f"Bearer {os.environ['LAZYAPP_API_KEY']}"},
+    json={"to": "+919812345670"},
+)
+```
+</CodeGroup>
 
-    Before you do, check
-    [`GET /v1/capabilities`](/concepts/capabilities) to confirm the number you are
-    sending from is connected and what it supports.
-  </Step>
-</Steps>
+See [Verify](/sending/verify) for managed vs delivery-only mode.
 
-## Next
+### Explore the rest
 
 <CardGroup cols={2}>
-  <Card title="Message types" icon="message" href="/sending/messages">
-    Media, location, contacts, interactive buttons, reactions and scheduling.
+  <Card title="Messages" icon="message" href="/sending/messages">
+    Text, media, interactive, reactions, and scheduling
   </Card>
-  <Card title="Idempotency" icon="rotate" href="/concepts/idempotency">
-    Make every write safe to retry.
+  <Card title="Templates" icon="file-lines" href="/sending/templates">
+    Create, submit for Meta review, and sync status
   </Card>
-  <Card title="Errors" icon="triangle-exclamation" href="/concepts/errors">
-    What each status code means and which are worth retrying.
+  <Card title="Webhooks" icon="bell" href="/webhooks/overview">
+    Signed delivery for messages, templates, and more
   </Card>
-  <Card title="Full API reference" icon="code" href="/api-reference/messages/send-a-message">
-    Every endpoint, with a request playground.
+  <Card title="Broadcasts" icon="bullhorn" href="/sending/broadcasts">
+    Template sends to a segment, with quiet hours
+  </Card>
+  <Card title="Verify" icon="shield-check" href="/sending/verify">
+    OTPs with fraud controls, managed or delivery-only
+  </Card>
+  <Card title="Platforms" icon="building" href="/platform/overview">
+    One workspace per customer, setup links, scoped keys
   </Card>
 </CardGroup>
 
-Stuck? Email [support@lazyapp.in](mailto:support@lazyapp.in).
+---
+
+## What's next?
+
+<CardGroup cols={2}>
+  <Card title="Go live" icon="tower-broadcast" href="/concepts/workspaces-and-modes">
+    Swap `sk_test_` for `sk_live_`. Nothing else changes.
+  </Card>
+  <Card title="Idempotency" icon="rotate" href="/concepts/idempotency">
+    Make every write safe to retry
+  </Card>
+  <Card title="Errors" icon="triangle-exclamation" href="/concepts/errors">
+    Status codes and which ones are worth retrying
+  </Card>
+  <Card title="API reference" icon="code" href="/api-reference/messages/send-a-message">
+    Every endpoint, with a request playground
+  </Card>
+</CardGroup>
+
+Going to production? Read [rate limits](/reference/rate-limits), [idempotency](/concepts/idempotency), and [error handling](/concepts/errors). Building for your users? Start at [Platforms](/platform/overview).

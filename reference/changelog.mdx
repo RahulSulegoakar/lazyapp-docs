@@ -3,6 +3,12 @@ title: "Changelog"
 description: "What shipped, newest first."
 ---
 
+<Update label="2026-09-01" description="v1">
+
+**Retrieve a message.** `GET /v1/messages/{uuid}` returns LazyApp's local message record (status, timestamps, body, metadata). Scope `messages:read`. Prefer webhooks in production; this is for confirmation and debugging.
+
+</Update>
+
 <Update label="2026-08-25" description="v1">
 
 **Call history API.** `GET /v1/calls` and `GET /v1/calls/{call}` return WhatsApp call records (direction, status, duration, related conversation). Scope `messages:read`. Live WebRTC answer is not included.
