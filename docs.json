@@ -107,6 +107,7 @@
             "pages": [
               "reference/scopes",
               "reference/rate-limits",
+              "reference/media-and-limits",
               "reference/versioning",
               "reference/changelog",
               "pending-gaps-zernio"

@@ -73,7 +73,7 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 | Flows | API reference only | Guide TBD |
 | CTWA | — | Skip |
 | Pricing & costs | `billing/overview.mdx`, `billing/whatsapp-rates.mdx`, `billing/mechanics.mdx` | Done |
-| Media & limits reference | `sending/media.mdx` | Partial |
+| Media & limits reference | `reference/media-and-limits.mdx` + `sending/media.mdx` | Done |
 | Migrate from Kapso | `migrating/from-kapso.mdx` | Done |
 | Migrate from Cloud API | `migrating/from-cloud-api.mdx` | Done |
 
