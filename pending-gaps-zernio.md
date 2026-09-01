@@ -1,8 +1,17 @@
+---
+title: "Pending gaps vs Zernio"
+description: "Internal tracker of product and documentation gaps compared to Zernio's WhatsApp API."
+---
+
 # Pending gaps vs Zernio
 
 Internal tracker for LazyApp vs [Zernio WhatsApp API](https://docs.zernio.com). **Code wins** — update this file when we ship or explicitly decline something.
 
 Last reviewed: 2026-09-01
+
+<Note>
+This page is for the LazyApp team and implementers comparing surfaces to Zernio. Customer-facing docs link here only where we explicitly document a skip.
+</Note>
 
 ## Product — build later
 
@@ -19,6 +28,7 @@ Last reviewed: 2026-09-01
 | Block users native `/v1` | Dedicated route | Meta-compat proxy only | |
 | CTWA conversions | Attribution + CAPI | Not built | Ads-heavy customers |
 | Public country rate API | — | Rates in workspace DB | Platform billing dashboards |
+| Live number-info / health API | `GET /v1/whatsapp/number-info`, account health | Cached fields on `GET /v1/capabilities`; live read console-only | Liveness after coexistence disconnect |
 | Analytics API | Listed as No on Zernio hub | Console usage only | Low priority |
 | Hosted Flow data endpoints | Managed encryption | Customer hosts `data_endpoint_uri` | Documented; no managed hosting |
 
@@ -47,7 +57,7 @@ Last reviewed: 2026-09-01
 | Broadcasts | `sending/broadcasts.mdx` | Done |
 | Templates | `sending/templates.mdx` | Done |
 | Contacts & profile | `guides/contacts.mdx` | Done |
-| Phone numbers / purchase / KYC | — | Skip (not our model) |
+| Phone numbers / purchase / KYC | `guides/phone-numbers.mdx` | Done (BYO model; skip shop/KYC) |
 | Calling | — | When capability GA |
 | Group chats | — | When capability GA |
 | Inbox (platform) | `platform/inbox.mdx` + embeds | Partial |

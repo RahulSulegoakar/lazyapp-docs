@@ -1,0 +1,106 @@
+---
+title: "Phone numbers"
+description: "Connect your own WhatsApp number, monitor quality and limits, and recover when Meta disconnects."
+---
+
+A WhatsApp number is a normal phone line with WhatsApp Cloud API enabled on your WABA. LazyApp does **not** sell or port numbers — you connect a number you already control through [Embedded Signup](/guides/connecting-whatsapp), or claim a shared **test** sandbox in the console.
+
+There is no Zernio-style number shop, KYC API, or `GET /v1/whatsapp/number-info`. This page covers what LazyApp actually exposes.
+
+## How you get a number
+
+| Path | Mode | Notes |
+| --- | --- | --- |
+| **Embedded Signup** | `live` | Your (or your customer's) WABA + number via console or [setup link](/platform/setup-links) |
+| **Sandbox claim** | `test` only | Shared LazyApp pool number in the console — not for production |
+
+LazyApp does not provision carrier lines. Numbers connected through Embedded Signup have **no** LazyApp SMS/voice SKU behind them — WhatsApp only.
+
+See [Connecting WhatsApp](/guides/connecting-whatsapp) for coexistence, reconnect, and platform onboarding.
+
+## Monitor quality and limits
+
+### API: cached snapshot
+
+[`GET /v1/capabilities`](/concepts/capabilities) returns each connection's last known Meta health fields plus feature flags:
+
+```bash
+curl https://lazyapp.in/v1/capabilities \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+| Field | Meaning |
+| --- | --- |
+| `connection_uuid` | LazyApp connection id |
+| `phone_number_id` | Meta phone number id (use in the [Meta proxy](/migrating/from-cloud-api)) |
+| `display_phone_number` | E.164 display |
+| `quality_rating` | `GREEN`, `YELLOW`, or `RED` |
+| `messaging_limit_tier` | Meta tier (for example `TIER_250`, `TIER_1K`) |
+| `capabilities` | What this number can do today |
+
+Values are updated from Meta webhooks and periodic syncs — not a live Graph read on every request.
+
+### Webhooks (preferred)
+
+Subscribe to connection and number events instead of polling:
+
+| Event | When |
+| --- | --- |
+| `connection.connected` | Number ready to send |
+| `connection.attention_required` | Meta needs action (review, credentials, registration) |
+| `connection.disconnected` | Channel stopped working — prompt reconnect |
+| `phone_number.quality_changed` | Quality rating moved |
+| `phone_number.updated` | Display name, tier, or config changed |
+
+See [Event reference](/webhooks/events). For platform customers, deliveries include the `customer` envelope.
+
+### Console: live Meta insights
+
+The **Connections** page loads a live read from Meta (quality, verified name, throughput, WABA review status, business profile fields). That depth is **console-only** today — there is no public `number-info` endpoint.
+
+<Warning>
+Do not treat `GET /v1/capabilities` alone as a liveness probe after a coexistence disconnect. Prefer `connection.disconnected` and, when in doubt, check the console or attempt a send. A live Meta number read API is on the [product backlog](/pending-gaps-zernio).
+</Warning>
+
+## Verification and registration
+
+**Embedded Signup** verifies the number inside Meta's flow — there is no public OTP API for normal onboarding.
+
+Edge cases handled in the **console** (not `/v1` today):
+
+| Situation | Console action |
+| --- | --- |
+| Meta asks for SMS/voice verification on an existing line | Request verification code, then submit code |
+| Cloud API registration failed because the number has two-step PIN (Meta error 133005) | **Register** with the correct PIN |
+| Rotate two-step PIN | **Set two-step PIN** |
+| Deregister from Cloud API | **Deregister** |
+
+If sends fail with a generic permission error while the connection still looks active, registration with the correct PIN is a common fix — the PIN is used for the Meta call only and is not stored by LazyApp.
+
+## Multi-number workspaces
+
+When a workspace has more than one connection:
+
+- [`GET /v1/capabilities`](/concepts/capabilities) lists all numbers; `is_default` marks the default send target.
+- [`POST /v1/broadcasts`](/sending/broadcasts) accepts optional `whatsapp_connection_id` (internal id).
+- Scoped API keys can restrict which `phone_number_id` values a key may use.
+
+Platform integrators map customers via [setup links](/platform/setup-links) and `customer.connected` webhooks — not per-number `accountId` fields.
+
+## What we skip (Zernio-style)
+
+| Zernio | LazyApp |
+| --- | --- |
+| Buy / port numbers via API | Embedded Signup only |
+| KYC / white-label KYC links | Not sold |
+| `GET /v1/whatsapp/number-info` live read | `GET /v1/capabilities` (cached) + webhooks |
+| `GET /v1/accounts/{id}/health` | `connection.*` webhooks + capabilities |
+| `POST …/whatsapp/register` via API | Console registration actions |
+| SMS / voice on the same purchased line | WhatsApp only |
+
+## Related
+
+- [Connecting WhatsApp](/guides/connecting-whatsapp) — connect and reconnect
+- [Capabilities](/concepts/capabilities) — limits and feature flags
+- [Webhooks](/webhooks/events) — `connection.*` and `phone_number.*`
+- [Pending gaps vs Zernio](/pending-gaps-zernio) — backlog including live number-info API

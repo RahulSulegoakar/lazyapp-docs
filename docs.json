@@ -39,6 +39,7 @@
             "pages": [
               "guides/whatsapp",
               "guides/connecting-whatsapp",
+              "guides/phone-numbers",
               "guides/contacts"
             ]
           },
@@ -103,7 +104,8 @@
               "reference/scopes",
               "reference/rate-limits",
               "reference/versioning",
-              "reference/changelog"
+              "reference/changelog",
+              "pending-gaps-zernio"
             ]
           }
         ]
