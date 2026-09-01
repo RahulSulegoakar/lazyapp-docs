@@ -20,7 +20,7 @@ Serves on http://localhost:3000.
 | `concepts/` | Workspaces, conventions, idempotency, pagination, errors, capabilities |
 | `sending/` | Messages, templates, media, events, verify, broadcasts |
 | `webhooks/` | Overview, signature verification, event reference |
-| `platform/` | Reselling: customers, setup links, embedded components |
+| `platform/` | Reselling: build-a-platform model, tenant messaging / usage / inbox, setup links, embeds |
 | `migrating/` | Moving from Meta's Cloud API |
 | `reference/` | Scopes, rate limits, versioning, changelog |
 | `api-reference/openapi.json` | The endpoint reference Mintlify renders |

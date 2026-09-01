@@ -7,6 +7,10 @@ description: "What shipped, newest first."
 
 **Retrieve a message.** `GET /v1/messages/{uuid}` returns LazyApp's local message record (status, timestamps, body, metadata). Scope `messages:read`. Prefer webhooks in production; this is for confirmation and debugging.
 
+**Customer API key scopes.** `POST /v1/platform/customers/{customer}/api-keys` accepts an optional `scopes` array and returns the granted scopes with the plaintext key.
+
+**Platform guides.** Docs now cover the multi-tenant model plus tenant messaging, usage dashboards, and inbox recipes under Platforms.
+
 </Update>
 
 <Update label="2026-08-25" description="v1">

@@ -51,6 +51,28 @@ Every delivery has the same envelope:
 
 Any `metadata` you attached when sending comes back here, which usually removes the need for a lookup.
 
+### Platform deliveries
+
+If you are a platform, events from a customer's workspace are also delivered to *your* endpoints. Those copies include a `customer` envelope so you can route without an endpoint per tenant:
+
+```json
+{
+  "id": "evt_…",
+  "type": "message.delivered",
+  "created_at": "2026-08-19T11:42:07+00:00",
+  "customer": {
+    "id": "cus_9f8b1c2d",
+    "external_id": "acct_8812",
+    "name": "Acme Retail"
+  },
+  "data": {
+    "message": { "uuid": "…", "status": "delivered" }
+  }
+}
+```
+
+Route on `customer.external_id` (your own id). The customer's own endpoint does not receive this envelope. See [Build a platform](/platform/overview#step-4-route-webhooks-back-to-the-right-customer).
+
 ## Headers
 
 | Header | Purpose |

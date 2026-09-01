@@ -6208,7 +6208,7 @@
           "Platform"
         ],
         "summary": "Issue an API key for a customer",
-        "description": "Mints a key scoped to that customer's workspace. The plaintext is returned once.\n\n**Required scope:** `customers:write`",
+        "description": "Mints a key scoped to that customer's workspace. The plaintext is returned once. Pass `scopes` to narrow access; omit it to grant the defaults for a customer-scoped key.\n\n**Required scope:** `customers:write`",
         "responses": {
           "201": {
             "description": "Created.",
@@ -9072,8 +9072,17 @@
           "id": {
             "type": "string"
           },
+          "name": {
+            "type": "string"
+          },
           "prefix": {
             "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "plaintext": {
             "type": "string",

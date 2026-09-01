@@ -57,6 +57,9 @@
             "group": "Platforms",
             "pages": [
               "platform/overview",
+              "platform/messaging",
+              "platform/usage",
+              "platform/inbox",
               "platform/setup-links",
               "platform/embedded-components"
             ]
