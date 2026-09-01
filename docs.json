@@ -86,7 +86,8 @@
           {
             "group": "Migrating",
             "pages": [
-              "migrating/from-cloud-api"
+              "migrating/from-cloud-api",
+              "migrating/from-kapso"
             ]
           },
           {

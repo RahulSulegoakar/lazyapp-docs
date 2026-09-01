@@ -1,0 +1,314 @@
+---
+title: "Migrate from Kapso"
+description: "Move a WhatsApp integration from Kapso to LazyApp — keep Meta-shaped sends, then adopt the native API."
+---
+
+Both Kapso and LazyApp sit on Meta's WhatsApp Cloud API, so templates, the 24-hour service window, WABA assets, and Graph-shaped payloads are familiar. Kapso exposes a Meta proxy plus a separate platform API (`X-API-Key`). LazyApp gives you the same idea: a **Meta-compatible proxy** and a **native `/v1` API**, both authenticated with `Authorization: Bearer`.
+
+Unlike Zernio's conversation-centric rewrite, you can often cut over Kapso **send** traffic with a base-URL and auth header change, then migrate webhooks and platform features.
+
+Most integrations land in half a day to a day.
+
+## Quick reference
+
+| What | Kapso | LazyApp |
+| --- | --- | --- |
+| Meta-shaped sends | `https://api.kapso.ai/meta/whatsapp/v24.0` | `https://lazyapp.in/meta/whatsapp` |
+| Native / platform API | `https://api.kapso.ai/platform/v1` | `https://lazyapp.in/v1` |
+| Auth | `X-API-Key: KEY` (Bearer also accepted on Meta proxy) | `Authorization: Bearer sk_live_...` only |
+| Send path | `POST /{phone_number_id}/messages` | Same on the proxy; or flat `POST /v1/messages` |
+| Multi-tenant unit | Customer + setup link | [Platform customer](/platform/overview) + [setup link](/platform/setup-links) |
+| Webhook signature | `X-Webhook-Signature` (HMAC-SHA256 hex) | `X-LazyApp-Signature` (`sha256=` + hex) |
+
+## Before you start
+
+- Kapso project API key (export history / templates before cutover if you need them)
+- LazyApp workspace and API key (`sk_test_` first) — [Authentication](/authentication)
+- Plan how each Kapso customer maps to a LazyApp platform customer (or a single workspace if you are not multi-tenant)
+
+### How the concepts map
+
+| Kapso | LazyApp | Notes |
+| --- | --- | --- |
+| Project + API key | [Workspace](/concepts/workspaces-and-modes) + API key | Keys carry [scopes](/reference/scopes), optional number / IP limits |
+| Customer | [Platform customer](/platform/overview) | Isolated child workspace |
+| WhatsApp phone number (`phone_number_id`) | [Connection](/concepts/glossary#connection) | Same Meta `phone_number_id`; also `connection_uuid` |
+| Setup / connection link | [Setup link](/platform/setup-links) | Hosted Embedded Signup |
+| Conversation / contact | Conversation / [contact](/concepts/glossary#contact) | Native IDs are UUIDs / `cnv_…` |
+
+```
+Platform customer: "Acme Corp"     ← Kapso customer
+└── Connection (+919812345670)     ← phone_number_id on Meta
+    ├── Messages & conversations
+    └── Templates (on the WABA)
+```
+
+<Warning>
+**WABA assets travel with the number; message history does not.** Approved templates, display name, quality rating, and messaging tier live on Meta's WABA and come along when you reconnect the same number. Conversations stored only in Kapso stay there — export anything you need before you cancel.
+</Warning>
+
+---
+
+## Step 1: Point Meta-shaped sends at LazyApp
+
+If your Kapso code already posts Cloud API bodies, keep the body. Change host and auth:
+
+<CodeGroup>
+```bash Kapso
+curl https://api.kapso.ai/meta/whatsapp/v24.0/PHONE_NUMBER_ID/messages \
+  -H "X-API-Key: KAPSO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messaging_product": "whatsapp",
+    "to": "919812345670",
+    "type": "text",
+    "text": { "body": "Hello from Kapso" }
+  }'
+```
+
+```bash LazyApp proxy
+curl https://lazyapp.in/meta/whatsapp/v24.0/PHONE_NUMBER_ID/messages \
+  -H "Authorization: Bearer sk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messaging_product": "whatsapp",
+    "to": "919812345670",
+    "type": "text",
+    "text": { "body": "Hello from LazyApp" }
+  }'
+```
+</CodeGroup>
+
+The version segment is accepted and ignored. Do **not** send `X-API-Key` — LazyApp expects Bearer only.
+
+Proxy coverage today (same services as `/v1`, not a fork):
+
+| Path | Methods |
+| --- | --- |
+| `/{version}/{phone_number_id}/messages` | `POST` |
+| `/{version}/{phone_number_id}/media` | `POST` |
+| `/{version}/{media}` | `GET`, `DELETE` |
+| `/{version}/{phone_number_id}/whatsapp_business_profile` | `GET`, `POST` |
+| `/{version}/{phone_number_id}/block_users` | `POST`, `DELETE` |
+| `/{version}/{waba_id}/message_templates` | `GET`, `POST` |
+
+Full native shapes (scheduling, events, broadcasts, Verify) live under `/v1` — see [Migrating from Meta's Cloud API](/migrating/from-cloud-api) and [Messages](/sending/messages).
+
+---
+
+## Step 2: Move WhatsApp numbers
+
+Pick the path that matches how the number was connected to Kapso.
+
+### Reconnect your own (or customer's) WABA
+
+If the WABA belongs to you or your customer (setup links / BYO SIM):
+
+1. Create a LazyApp [platform customer](/platform/overview) per Kapso customer (skip if single-tenant — connect in the console).
+2. Issue a [setup link](/platform/setup-links) and open it (or send it to the customer).
+3. Complete Meta Embedded Signup with the Facebook login that owns the WABA.
+4. Confirm with `connection.connected` / `customer.connected` webhooks — not only the browser redirect.
+
+```bash
+curl https://lazyapp.in/v1/platform/setup-links \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "cus_9f8b1c2d",
+    "expires_in_days": 7,
+    "use_policy": "single",
+    "allowed_connection_type": "new",
+    "redirect_url": "https://yourapp.example/settings/whatsapp?connected=1"
+  }'
+```
+
+Because the WABA stays the same, approved templates and quality rating come with it. Details: [Connecting WhatsApp](/guides/connecting-whatsapp).
+
+<Warning>
+**Coexistence:** pairing with the WhatsApp Business App is exclusive to one BSP. Disconnect Kapso in the Business App first (Settings → Account → Business Platform → Disconnect), then run LazyApp's connect flow and scan again if required.
+</Warning>
+
+### Kapso-managed / Instant Setup numbers
+
+If the number lived in Kapso's pool, it does not move with you. Connect a number you (or your customer) own through Embedded Signup / a setup link. LazyApp does **not** sell a dedicated phone-number SKU catalogue like some CPaaS providers.
+
+### Credentials paste
+
+LazyApp does not expose a public “post Meta system-user token” connect endpoint for integrators. Connection is Embedded Signup (console or setup link). Do not invent a credentials POST from Kapso's platform API into LazyApp.
+
+After connect, confirm the number with [`GET /v1/capabilities`](/concepts/capabilities). Store `phone_number_id` ↔ LazyApp `connection_uuid` if you use both.
+
+---
+
+## Step 3: Prefer native sends when you are ready
+
+You can stay on the Meta proxy indefinitely. When you want LazyApp-native features, switch bodies to flat JSON:
+
+```bash
+curl https://lazyapp.in/v1/messages \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: order-1042-shipped" \
+  -d '{
+    "type": "template",
+    "to": "+919812345670",
+    "phone_number_id": "123456789012345",
+    "template": {
+      "name": "order_update",
+      "language": "en",
+      "category": "utility",
+      "components": [
+        {
+          "type": "body",
+          "parameters": [{ "type": "text", "text": "Asha" }]
+        }
+      ]
+    }
+  }'
+```
+
+| Kapso habit | LazyApp native |
+| --- | --- |
+| Always `/{phone_number_id}/messages` + `to` | `POST /v1/messages` with `to` / `recipient`, optional `phone_number_id` |
+| Template outside window | Same rule — use `type: template` |
+| Media Meta `id` | Upload via `POST /v1/media` or `media_url` — see [Media](/sending/media) |
+| Interactive Meta envelope | `type: interactive` + `interactive` object |
+| Status `read` / typing on messages | Console inbox UX; not a 1:1 Kapso messages overload on the public API |
+
+LazyApp is **recipient-centric on `/v1/messages`**, not Zernio's “create conversation then post messages” model. Conversations still exist for inbox and webhooks (`conversation_id` on payloads).
+
+---
+
+## Step 4: Update webhooks
+
+Kapso often registers webhooks per phone number. LazyApp webhooks are **workspace-scoped** with event filtering. Scope multi-tenant handlers by connection / customer fields on the payload.
+
+```bash
+curl https://lazyapp.in/v1/webhooks \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://yourapp.example/webhooks/lazyapp",
+    "subscribed_events": [
+      "message.received",
+      "message.sent",
+      "message.delivered",
+      "message.read",
+      "message.failed",
+      "reaction.received",
+      "conversation.started",
+      "template.approved",
+      "connection.connected",
+      "customer.connected"
+    ]
+  }'
+```
+
+### Event mapping
+
+| Kapso-style | LazyApp |
+| --- | --- |
+| `whatsapp.message.received` | `message.received` |
+| `whatsapp.message.sent` | `message.sent` |
+| `whatsapp.message.delivered` | `message.delivered` |
+| `whatsapp.message.read` | `message.read` |
+| `whatsapp.message.failed` | `message.failed` |
+| Reactions | `reaction.received` |
+| Conversation created | `conversation.started` |
+| Phone number connected | `connection.connected` / `customer.connected` |
+| Phone number lost | `connection.disconnected` |
+| Template status | `template.approved`, `template.rejected`, … |
+
+Payloads are LazyApp-shaped (flat envelope), not nested Meta `entry[].changes[]`. Full list: [Webhook events](/webhooks/events).
+
+### Signature verification
+
+Same HMAC-SHA256 idea; header and encoding differ:
+
+```js
+import crypto from 'node:crypto';
+
+function verify(rawBody, header, secret) {
+  const expected =
+    'sha256=' + crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+  const a = Buffer.from(expected);
+  const b = Buffer.from(header ?? '');
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// Kapso:  x-webhook-signature  (often raw hex)
+// LazyApp: x-lazyapp-signature (sha256=<hex>)
+```
+
+See [Verifying webhooks](/webhooks/verifying). Delivery is at-least-once — dedupe on event `id` / `X-LazyApp-Delivery`. Retries and auto-pause: [Webhooks overview](/webhooks/overview).
+
+---
+
+## Step 5: Templates and flows
+
+If you reconnected the **same** WABA, templates are already at Meta. List with `GET /v1/templates` or the Meta-compat templates routes. Recreate only when the WABA is new.
+
+Flows: use LazyApp's Flows API under `/v1/flows` (create, publish, send via interactive). If Kapso hosted your Flow data-exchange endpoint, host that endpoint yourself after cutover.
+
+---
+
+## Feature map
+
+| Feature | Kapso | LazyApp |
+| --- | --- | --- |
+| Meta-shaped send / media / templates | Meta proxy | [`/meta/whatsapp/...`](/migrating/from-cloud-api) |
+| Flat send API | Platform + proxy | [`POST /v1/messages`](/sending/messages) |
+| Contacts / conversations | Platform | `/v1/contacts`, `/v1/conversations` |
+| Broadcasts | Platform | [Broadcasts](/sending/broadcasts) |
+| Automations | Workflows | Workflows + [automation packs](/sending/automation-packs) |
+| OTP | — | [Verify](/sending/verify) |
+| Customer onboarding | Setup links | [Setup links](/platform/setup-links) |
+| Calling | WebRTC / calls | [Calling](/concepts/capabilities) when Meta grants it |
+| Usage for tenants | Platform | [Tenant usage](/platform/usage) |
+
+**You also gain:** cursor pagination, `Idempotency-Key` on all writes, events that decouple code from template names, wallet usage ledger, and a WhatsApp-only focus (no Instagram/X inbox).
+
+**No LazyApp equivalent (plan around these):**
+
+- Kapso-hosted serverless functions for webhooks / Flow data endpoints
+- Raw Meta webhook forwarding (`kind: "meta"`)
+- Purchasing numbers from a LazyApp number inventory
+- Paste Meta system-user credentials via public API
+
+---
+
+## Cutover strategy
+
+<Warning>
+Migrate **number by number**. Webhook routing and registration move with the number. Export Kapso history, reconnect through LazyApp, verify webhooks, then cancel on Kapso. For platforms, migrate one customer at a time.
+</Warning>
+
+| Phase | Actions |
+| --- | --- |
+| **Prep** | Create customers / keys; smoke-test with `sk_test_` against the Meta proxy |
+| **Pilot** | Move one low-traffic production number end-to-end |
+| **Rollout** | Remaining numbers / customers in batches |
+| **Cutoff** | Cancel Kapso; keep your history export |
+
+Meta's conversation charges and template approvals live on the WABA — they are not “re-approved” by LazyApp when you reconnect the same number.
+
+---
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `401` | Still sending `X-API-Key` | Use `Authorization: Bearer …` |
+| Proxy 404 on exotic Graph path | Path not in the proxy table | Use a covered route or the native `/v1` API |
+| Free-form refused | Outside 24h window | Send an approved [template](/sending/templates) |
+| Webhook signature fails | Expecting Kapso header / raw hex only | Verify `X-LazyApp-Signature` with `sha256=` prefix on the **raw** body |
+| Double sends after retry | New idempotency key each attempt | Reuse [`Idempotency-Key`](/concepts/idempotency) |
+
+---
+
+## Related
+
+- [Migrating from Meta's Cloud API](/migrating/from-cloud-api) — proxy details
+- [Connecting WhatsApp](/guides/connecting-whatsapp) — Embedded Signup and setup links
+- [Build a platform](/platform/overview) — Kapso-style multi-tenant model
+- Support: [support@lazyapp.in](mailto:support@lazyapp.in)
