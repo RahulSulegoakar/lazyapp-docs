@@ -25,6 +25,7 @@
             "group": "Core concepts",
             "pages": [
               "concepts/workspaces-and-modes",
+              "concepts/glossary",
               "concepts/conventions",
               "concepts/idempotency",
               "concepts/pagination",

@@ -1,0 +1,122 @@
+---
+title: "Glossary"
+description: "Every LazyApp term defined once — workspace vs connection vs mode, platform customer vs contact, and the IDs people mix up."
+---
+
+The terms the docs and the API use, defined once. The ones people mix up most: a **workspace** is your whole tenant, a **connection** is a WhatsApp Business Account and its numbers inside it, and a **platform customer** is a reseller's end customer — each with their own isolated workspace.
+
+### API key
+
+Your bearer credential (`Authorization: Bearer …`). Prefix `sk_test_` or `sk_live_` selects the [mode](#mode). Keys carry [scopes](/reference/scopes) and optional phone-number / IP restrictions — see [Authentication](/authentication).
+
+### Automation pack
+
+A named bundle of starter templates and workflow defaults a platform can provision for a [platform customer](#platform-customer) at setup time. See [Automation packs](/sending/automation-packs).
+
+### Broadcast
+
+A one-to-many outbound campaign paced to Meta's messaging-limit tier rather than fired all at once. See [Broadcasts](/sending/broadcasts).
+
+### BSUID
+
+Business-scoped user id — Meta's opaque recipient identifier when a phone number is not available. Address it with `recipient: { "type": "bsuid", "value": "…" }` on send. See [Messages](/sending/messages).
+
+### Capability
+
+A feature flag for a [connection](#connection) (calling, block lists, flows, and so on). Ask [`GET /v1/capabilities`](/concepts/capabilities) instead of hard-coding what a number supports.
+
+### Connection
+
+One WhatsApp Business Account and its phone numbers in a [workspace](#workspace). Credentials live here. Select it with `phone_number_id` or `connection_uuid` when you have more than one. See [Workspaces and modes](/concepts/workspaces-and-modes) and [Connecting WhatsApp](/guides/connecting-whatsapp).
+
+### Contact
+
+The person being messaged — never "user" (a user is someone who logs into LazyApp). Identified by phone, [BSUID](#bsuid), or your own external id.
+
+### Conversation
+
+The thread between a [connection](#connection) and a [contact](#contact). Inbox and some webhooks key off `conversation_id`.
+
+### Customer service window
+
+The 24-hour period after a contact's last inbound message during which free-form (non-template) messages are allowed. Outside it, only an approved [template](#template) will send. Reported as `service_window` on the contact.
+
+### Embedded Signup
+
+Meta's hosted flow that connects a WhatsApp Business Account into LazyApp without you collecting tokens by hand. Platforms often wrap it in a [setup link](#setup-link). See [Connecting WhatsApp](/guides/connecting-whatsapp).
+
+### Event (application event)
+
+A business signal you POST to `/v1/events` (order shipped, appointment reminder) that LazyApp can map to a template send. Distinct from a [webhook](#webhook) event LazyApp delivers to you.
+
+### Idempotency-Key
+
+Optional header on every write under `/v1`. Retrying the same key with the same body replays the original response instead of double-sending. Messages also accept a body `idempotency_key` for permanent dedupe. See [Idempotency](/concepts/idempotency).
+
+### Media
+
+A file uploaded to Meta through LazyApp (`POST /v1/media` or `/v1/media/url`) and referenced by `media_id` when sending. Meta's copy expires in about 30 days; `retention` controls whether LazyApp keeps a copy. See [Media](/sending/media).
+
+### Message
+
+One outbound or inbound WhatsApp message. Status moves `queued → sent → delivered → read` / `played`, or `failed`. Schedule with `send_at`. See [Message lifecycle](/concepts/message-lifecycle).
+
+### Mode
+
+`live` or `test` — never "environment". Taken from the API key prefix. Data never crosses modes. See [Workspaces and modes](/concepts/workspaces-and-modes).
+
+### phone_number_id
+
+Meta's id for a specific WhatsApp Business phone number on a [connection](#connection). Pass it on send when the workspace has more than one number.
+
+### Platform
+
+A LazyApp workspace flagged as a reseller: it owns [platform customers](#platform-customer), issues setup links, and can act on a customer's behalf with `X-LazyApp-Customer`. See [Build a platform](/platform/overview).
+
+### Platform customer
+
+Your customer when you resell LazyApp. Each gets an isolated [workspace](#workspace) with its own connections, keys and data. Identified by `public_id` (`cus_…`), `uuid`, or your `external_id`.
+
+### Quality rating
+
+Meta's `GREEN` / `YELLOW` / `RED` signal for a number, exposed on [capabilities](/concepts/capabilities). Sliding to `RED` can cut the messaging-limit tier.
+
+### Request id (`X-Request-Id`)
+
+Correlation id on every `/v1` response. Echo your own or accept LazyApp's. For support tickets, not for idempotency — use [`Idempotency-Key`](#idempotency-key).
+
+### Scope
+
+A permission on an [API key](#api-key) such as `messages:send` or `webhooks:write`. A call outside the key's scopes returns `403`. See [Scopes](/reference/scopes).
+
+### Setup link
+
+A one-time URL (`set_…`) a platform sends so a [platform customer](#platform-customer) can connect WhatsApp themselves. See [Setup links](/platform/setup-links).
+
+### Template
+
+An approved WhatsApp message template (utility, marketing, or authentication). Required outside the [customer service window](#customer-service-window). See [Templates](/sending/templates).
+
+### User
+
+Someone who signs into the LazyApp console. Not a [contact](#contact).
+
+### Verify
+
+LazyApp's OTP send/check API for phone verification flows. See [Verify](/sending/verify).
+
+### WABA
+
+WhatsApp Business Account — Meta's container for your business numbers. LazyApp stores it as part of a [connection](#connection). Meta bills conversation and calling fees to the WABA's payment method according to Meta's pricing.
+
+### Webhook
+
+An HTTPS endpoint you register that receives events (`message.received`, `message.delivered`, …). Delivery is at-least-once — dedupe on the event id — and signed with `X-LazyApp-Signature`. See [Webhooks](/webhooks/overview).
+
+### Workflow
+
+An automation graph that reacts to inbound messages, statuses, or schedules and can send replies. Distinct from a one-shot [broadcast](#broadcast).
+
+### Workspace
+
+Your LazyApp tenant: billing, members, connections, contacts, messages, templates, media, and webhooks. You never pass a workspace id — the API key scopes every request. Contains [modes](#mode) and [connections](#connection). When you are a [platform](#platform), each [platform customer](#platform-customer) is also a workspace.
