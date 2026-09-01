@@ -38,7 +38,8 @@
             "group": "WhatsApp",
             "pages": [
               "guides/whatsapp",
-              "guides/connecting-whatsapp"
+              "guides/connecting-whatsapp",
+              "guides/contacts"
             ]
           },
           {

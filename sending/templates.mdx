@@ -5,6 +5,44 @@ description: "Create, submit and track message templates."
 
 A template is pre-approved content. It is the only way to message someone outside the 24-hour customer-service window, so most production traffic is templates.
 
+Templates belong to your workspace and mode — there is no `accountId` query parameter. LazyApp submits to Meta on the connected WABA for that workspace.
+
+## Quick start
+
+```bash
+# List approved and pending templates
+curl "https://lazyapp.in/v1/templates?status=approved" \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+
+# Create and submit to Meta (default)
+curl https://lazyapp.in/v1/templates \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "order_shipped",
+    "language": "en",
+    "category": "UTILITY",
+    "body_text": "Hi {{1}}, order {{2}} ships today and arrives {{3}}.",
+    "body_examples": ["Asha", "1042", "Thursday"],
+    "footer_text": "Reply STOP to opt out",
+    "submit": true
+  }'
+```
+
+## List templates
+
+[`GET /v1/templates`](/api-reference/templates/list-templates) returns cursor-paginated templates for the workspace.
+
+| Query | Filters |
+| --- | --- |
+| `status` | `draft`, `pending`, `approved`, `rejected`, `paused`, `disabled`, … |
+| `category` | `UTILITY`, `AUTHENTICATION`, `MARKETING` |
+| `limit` | Page size (max 200) |
+
+Response fields include `uuid`, `name`, `language`, `category`, `status`, `body_text`, `header`, `buttons`, `rejection_reason`, `quality_score`, and Meta's `provider_template_id` when assigned.
+
+Retrieve one template by name or uuid: [`GET /v1/templates/{template}`](/api-reference/templates/retrieve-a-template).
+
 ## Categories
 
 Meta requires one of three, and it drives pricing:
@@ -13,7 +51,7 @@ Meta requires one of three, and it drives pricing:
 | --- | --- | --- |
 | `UTILITY` | Order updates, appointment reminders, receipts | Cheapest. Must relate to an existing transaction |
 | `AUTHENTICATION` | One-time passcodes | Use [Verify](/sending/verify) rather than building this yourself |
-| `MARKETING` | Offers, announcements, re-engagement | Most expensive, and subject to opt-out and quality scrutiny |
+| `MARKETING` | Offers, announcements, re-engagement | Required for [broadcasts](/sending/broadcasts). Most expensive |
 
 <Warning>
   Meta re-categorises templates it judges to be miscategorised, which changes what you pay.
@@ -21,7 +59,9 @@ Meta requires one of three, and it drives pricing:
   receive a `template.category_changed` [webhook](/webhooks/events).
 </Warning>
 
-## Creating one
+## Create a template
+
+LazyApp uses a **flat native shape** on `POST /v1/templates`, not Zernio's Meta `components` array on `/whatsapp/templates`:
 
 ```bash
 curl https://lazyapp.in/v1/templates \
@@ -38,13 +78,13 @@ curl https://lazyapp.in/v1/templates \
   }'
 ```
 
-Names must be lowercase, digits and underscores only, and are unique per language within your workspace.
+Rules:
 
-`body_examples` are not optional in practice: Meta rejects templates whose placeholders it cannot evaluate. Give one realistic example per placeholder, in order.
+- Names: lowercase letters, digits, underscores only (`^[a-z0-9_]+$`), unique per language in the workspace.
+- `body_examples`: one realistic string per `{{n}}` placeholder — Meta rejects templates it cannot evaluate.
+- `submit`: defaults to `true` (submit immediately). Pass `"submit": false` to keep a local draft.
 
-`submit: true` sends it to Meta immediately. Leave it out to keep a draft.
-
-## Headers and buttons
+### Headers and buttons
 
 ```json
 {
@@ -56,44 +96,115 @@ Names must be lowercase, digits and underscores only, and are unique per languag
 }
 ```
 
-`header.format` is `NONE`, `TEXT`, `IMAGE`, `VIDEO` or `DOCUMENT`. Button types are `QUICK_REPLY`, `URL`, `PHONE_NUMBER`, `OTP` and `FLOW`. URL buttons must be https.
+`header.format` is `NONE`, `TEXT`, `IMAGE`, `VIDEO` or `DOCUMENT`. Button types: `QUICK_REPLY`, `URL`, `PHONE_NUMBER`, `OTP`, `FLOW`. URL buttons must be `https://`.
 
-## Lifecycle
+Authentication templates can pass:
 
-Templates move through states, and not all of them are yours to control:
+```json
+{
+  "authentication": {
+    "add_security_recommendation": true,
+    "code_expiration_minutes": 10
+  }
+}
+```
 
-<Steps>
-  <Step title="draft">
-    Created in LazyApp, not yet sent to Meta.
-  </Step>
-  <Step title="pending">
-    Submitted. Review usually takes minutes but can take much longer.
-  </Step>
-  <Step title="approved">
-    Sendable. You get a `template.approved` webhook.
-  </Step>
-  <Step title="rejected">
-    Meta declined it. `rejection_reason` says why. Fix and resubmit under a new name.
-  </Step>
-  <Step title="paused or disabled">
-    Approval is not permanent. Poor recipient reactions can pause a template, and repeated
-    problems disable it. You get `template.paused` and `template.disabled` webhooks.
-  </Step>
-</Steps>
+### Meta-shaped create (proxy)
 
-Never assume a template that worked yesterday works today. Read the status, and handle a send failure gracefully.
+If you already have Kapso/Cloud API payloads, create via the proxy with Meta's `components` envelope:
 
-## Sending one
+```bash
+curl -X POST "https://lazyapp.in/meta/whatsapp/v21.0/{waba_id}/message_templates" \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "order_confirmation",
+    "language": "en",
+    "category": "UTILITY",
+    "components": [
+      { "type": "BODY", "text": "Hi {{1}}, your order {{2}} has been confirmed!" }
+    ]
+  }'
+```
 
-See [messages](/sending/messages#types), or let [events](/sending/events) pick the template for you.
+See [Migrating from Cloud API](/migrating/from-cloud-api).
 
-## Editing in Business Manager
+## Template statuses
 
-If someone edits templates directly at Meta, pull the changes in:
+Only `approved` templates can be sent. LazyApp stores lowercase statuses mapped from Meta:
+
+| `status` | Meaning |
+| --- | --- |
+| `draft` | Saved in LazyApp, not submitted |
+| `submitting` | In flight to Meta |
+| `pending` | Under Meta review (includes Meta `IN_APPEAL`) |
+| `approved` | Sendable |
+| `rejected` | Declined — read `rejection_reason`, fix, resubmit (often under a new name) |
+| `paused` | Paused on quality grounds — temporarily unsendable |
+| `disabled` | Disabled by Meta — not sendable |
+| `archived` | Archived at Meta |
+| `deleted` | Deleted locally / pending deletion at Meta |
+
+<Note>
+Meta review usually takes minutes but can take up to 24 hours. Do not poll the list in a tight loop — subscribe to template [webhooks](/webhooks/events).
+</Note>
+
+### Webhooks
+
+| Event | When |
+| --- | --- |
+| `template.pending` | Submitted to Meta |
+| `template.approved` | Approved and sendable |
+| `template.rejected` | Declined (`rejection_reason`) |
+| `template.paused` | Quality pause |
+| `template.disabled` | Disabled after repeated problems |
+| `template.category_changed` | Meta moved category (pricing impact) |
+
+## Starter template sets
+
+Platforms can seed templates when a customer connects via [`template_set` on setup links](/platform/setup-links#starter-templates). Discover valid keys:
+
+```bash
+curl https://lazyapp.in/v1/templates/sets \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+Returns named packs (for example `real_estate`) with template names and languages — do not hardcode keys across deployments.
+
+## Sync and delete
+
+Pull changes made in Meta Business Manager:
 
 ```bash
 curl -X POST https://lazyapp.in/v1/templates/sync \
   -H "Authorization: Bearer $LAZYAPP_API_KEY"
 ```
 
-LazyApp also syncs statuses automatically from Meta's webhooks, so this is for reconciliation rather than routine use.
+LazyApp also updates statuses from Meta webhooks; sync is for reconciliation.
+
+Delete at Meta and mark deleted locally:
+
+```bash
+curl -X DELETE https://lazyapp.in/v1/templates/{name_or_uuid} \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+## Sending a template
+
+See [Messages](/sending/messages#types), [Broadcasts](/sending/broadcasts), or [Events](/sending/events) to pick the template for you.
+
+## What we skip (Zernio-style)
+
+| Zernio | LazyApp |
+| --- | --- |
+| `GET /whatsapp/templates?accountId=` | `GET /v1/templates` (workspace scoped) |
+| Meta `components` on native create | Flat `body_text`, `header`, `buttons` on `/v1/templates` |
+| Template Library API (`library_template_name`, `template-library` lookup) | Create in Meta's library in Business Manager, then `POST /v1/templates/sync` |
+| `whatsapp.template.status_updated` event name | `template.approved`, `template.rejected`, etc. |
+
+## Related
+
+- [Messages](/sending/messages) — send an approved template
+- [Broadcasts](/sending/broadcasts) — marketing templates at scale
+- [Verify](/sending/verify) — prefer this over hand-rolled AUTHENTICATION templates
+- [Webhooks](/webhooks/events) — template lifecycle events

@@ -1,0 +1,128 @@
+---
+title: "Contacts & profile"
+description: "Manage contacts, consent, and your WhatsApp business profile."
+---
+
+Contacts are the people you message. LazyApp stores them per workspace and mode; broadcasts and marketing sends require a contact row plus granted marketing [consent](/sending/broadcasts#recording-consent-from-your-own-opt-in-flow).
+
+There is no `profileId`, `accountId`, or `platform` on contact calls — the API key scopes everything.
+
+## Quick start
+
+```bash
+# Create or update by phone (upsert)
+curl https://lazyapp.in/v1/contacts \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone_number": "+919812345670",
+    "email": "asha@acme.example",
+    "username": "Asha",
+    "attributes": { "company": "Acme Retail" }
+  }'
+
+# Record marketing consent from your opt-in flow
+curl -X POST https://lazyapp.in/v1/contacts/{uuid}/consent \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "granted": true,
+    "purpose": "marketing",
+    "consent_text": "I agree to receive WhatsApp offers",
+    "proof_reference": "checkout-1042",
+    "captured_by": "website"
+  }'
+```
+
+## Create and update
+
+`POST /v1/contacts` upserts on the first identity field you provide:
+
+| Identity field | Use when |
+| --- | --- |
+| `phone_number` | Normal WhatsApp contacts (E.164) |
+| `external_id` | Your CRM primary key |
+| `bsuid` | Meta business-scoped user id when you do not have a phone yet |
+
+At least one of `phone_number`, `bsuid`, or `external_id` is required.
+
+Optional fields: `username`, `email`, `preferred_language`, `timezone`, `attributes` (free-form JSON for CRM fields).
+
+`PATCH /v1/contacts/{contact}` accepts the same body fields. Look up `{contact}` by uuid, phone number, `external_id`, or `bsuid`.
+
+### Service window on read
+
+`GET /v1/contacts/{contact}` includes `service_window` — whether the [24-hour window](/sending/messages#the-24-hour-window) is open, when it expires, and the last inbound timestamp. Use this before choosing template vs free-form send.
+
+## List and search
+
+```bash
+curl "https://lazyapp.in/v1/contacts?limit=25&q=9812" \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+Cursor-paginated (`next_cursor`). `q` matches phone, `external_id`, or email.
+
+## Consent and opt-out
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /v1/contacts/{contact}/consent` | Record opt-in evidence (`consent_text`, `proof_reference`, `captured_by`) |
+| `POST /v1/contacts/{contact}/suppress` | Opt out of `marketing` or `all` sends |
+
+Granting marketing consent lifts a matching suppression. See [Broadcasts](/sending/broadcasts) for how exclusions work at send time.
+
+## Merge duplicates
+
+When the same person arrives under two identities:
+
+```bash
+curl -X POST https://lazyapp.in/v1/contacts/{target_uuid}/merge \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "source": "{source_uuid}" }'
+```
+
+Messages and attributes consolidate onto the target contact.
+
+## Business profile
+
+LazyApp does not expose `GET /v1/whatsapp/business-profile`. Use the **Meta-compatible proxy** (same as [Cloud API migration](/migrating/from-cloud-api)):
+
+```bash
+# Read
+curl "https://lazyapp.in/meta/whatsapp/v21.0/{phone_number_id}/whatsapp_business_profile" \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+
+# Update
+curl -X POST "https://lazyapp.in/meta/whatsapp/v21.0/{phone_number_id}/whatsapp_business_profile" \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "about": "Your go-to store for widgets",
+    "description": "We sell the best widgets in town.",
+    "email": "hello@acme.example",
+    "websites": ["https://acme.example"]
+  }'
+```
+
+Replace `{phone_number_id}` with your connection's Meta phone number id. The key must be allowed to use that number. You can also edit profile fields in the LazyApp console under **Connections**.
+
+Cached profile fields sync back onto the connection after update.
+
+## What we skip (Zernio-style)
+
+| Zernio | LazyApp |
+| --- | --- |
+| `profileId` + `accountId` + `platformIdentifier` | Workspace scoped; `phone_number` or `bsuid` |
+| `POST /v1/contacts/bulk` (1,000 rows) | Upsert one at a time or import in console |
+| `tags` on API create | Use `attributes` or tag in console |
+| `isSubscribed` boolean | Explicit `consent` + `suppress` endpoints |
+| Native `/v1/whatsapp/business-profile` | Meta proxy under `/meta/whatsapp/...` |
+
+## Related
+
+- [Broadcasts](/sending/broadcasts) — audience and consent requirements
+- [Messages](/sending/messages) — send to a contact's phone or BSUID
+- [API reference — contacts](/api-reference/contacts/list-contacts)
+- [Migrating from Cloud API](/migrating/from-cloud-api) — proxy auth and paths
