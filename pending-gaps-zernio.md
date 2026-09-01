@@ -24,7 +24,8 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 | Contact bulk import API | `POST /v1/contacts/bulk` (1k) | Loop `POST /v1/contacts` or console | |
 | Contact tags via API | Tags on create/update | Tags in console; `attributes` JSON on API | |
 | Groups GA | Full groups API | `/v1/groups` exists; `groups: false` in capabilities | Non-coexistence numbers |
-| Calling docs + UX | Calling API page | Meta-gated; `calling: false` default | When capability flips on |
+| Calling docs + UX | Calling API page | Permission request + webhook history; no PSTN/SIP bridge | `guides/calling.mdx` documents today; Zernio bridge backlog |
+| Outbound dial + forwardTo API | Live dial + tel/sip/wss | `business_initiated` stub only | Full CPaaS bridge |
 | Block users native `/v1` | Dedicated route | Meta-compat proxy only | |
 | CTWA conversions | Attribution + CAPI | Not built | Ads-heavy customers |
 | Public country rate API | — | Rates in workspace DB | Platform billing dashboards |
@@ -58,7 +59,7 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 | Templates | `sending/templates.mdx` | Done |
 | Contacts & profile | `guides/contacts.mdx` | Done |
 | Phone numbers / purchase / KYC | `guides/phone-numbers.mdx` | Done (BYO model; skip shop/KYC) |
-| Calling | — | When capability GA |
+| Calling | `guides/calling.mdx` | Done (partial — no Zernio bridge) |
 | Group chats | — | When capability GA |
 | Inbox (platform) | `platform/inbox.mdx` + embeds | Partial |
 | Flows | API reference only | Guide TBD |

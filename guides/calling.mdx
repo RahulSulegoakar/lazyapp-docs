@@ -1,0 +1,114 @@
+---
+title: "Calling"
+description: "WhatsApp voice calls — permission requests, webhook events, and call history."
+---
+
+WhatsApp Business Calling lets a contact place a voice call to your business number from inside the chat, and (when Meta allows) lets you request permission to call them back. LazyApp **records call events from Meta webhooks** and exposes **call history** plus a **call-permission request** API.
+
+<Warning>
+Calling is **Meta-gated**. Most connections start with `calling: false` on [`GET /v1/capabilities`](/concepts/capabilities). LazyApp rejects call APIs until Meta enables calling for that number (often via `capability_overrides` after Meta approval).
+
+LazyApp is **not** a CPaaS voice bridge like Zernio — there is no `forwardTo` (`tel:`, `sip:`, `wss:`), no recording surcharge, and no carrier-minute invoice from LazyApp. Meta's calling fees bill to your WABA; see [WhatsApp message rates — Calls](/billing/whatsapp-rates#calls).
+</Warning>
+
+## What LazyApp supports today
+
+| Surface | Status |
+| --- | --- |
+| Inbound / outbound **call events** from Meta | Stored + [`call.*`](/webhooks/events#calls) webhooks |
+| [`GET /v1/calls`](/api-reference/calls/list-calls) | Call history (newest first, cursor-paginated) |
+| [`GET /v1/calls/{uuid}`](/api-reference/calls/retrieve-a-call) | One call by LazyApp uuid |
+| [`POST /v1/calls`](#request-call-permission) | Send a **call permission request** message (default) |
+| Enable calling / forward destination / recording | **Not exposed** — configure in Meta / your telephony stack |
+| Outbound dial API (bridge to PSTN/SIP/AI) | **Not built** — Zernio-style `initiateWhatsAppCall` with live dial |
+| `GET …/call-permissions` | **Not built** — permission outcome arrives on webhooks |
+
+**Coexistence numbers** (WhatsApp Business app + Cloud API) do not support voice/video calling through the Cloud API — same Meta limitation as on any BSP.
+
+## Check before you build
+
+```bash
+curl https://lazyapp.in/v1/capabilities \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+When `capabilities.calling` is `true`, call permission requests and call webhooks are available for that connection.
+
+Meta also restricts **business-initiated** calling by country and messaging tier (for example US/CA/EG/VN/NG blocked for outbound; production guidance often requires `TIER_2K` or higher). LazyApp does not enforce those rules separately — Meta refuses the underlying action.
+
+## Request call permission
+
+Before outbound calling, WhatsApp requires the contact to opt in. Send the standard interactive permission request:
+
+```bash
+curl -X POST https://lazyapp.in/v1/calls \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "+919812345670",
+    "type": "call_permission_request",
+    "body": "May we call you about your order?"
+  }'
+```
+
+```json
+{
+  "kind": "call_permission_request",
+  "message": {
+    "uuid": "…",
+    "provider_message_id": "wamid.…",
+    "status": "sent"
+  }
+}
+```
+
+`type` defaults to `call_permission_request` when omitted. Optional routing: `phone_number_id` or `connection_uuid` when the workspace has multiple numbers.
+
+When the contact responds, LazyApp emits [`call.permission_request`](/webhooks/events#calls) with `response`: `accept` or `reject`.
+
+<Note>
+The API accepts `type: "business_initiated"` but today it only creates a **local stub row** for development — it does **not** place a live Meta outbound call. Do not use it in production.
+</Note>
+
+## Call history
+
+List calls ingested from Meta webhooks:
+
+```bash
+curl "https://lazyapp.in/v1/calls?limit=25" \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+Each row includes `uuid`, `direction` (`inbound` / `outbound`), `status` (`ringing`, `accepted`, `terminated`, …), `from`, `to`, optional `contact`, `conversation_id`, timestamps, and `duration_seconds` when known.
+
+This is **history**, not a live answer or hold API — subscribe to webhooks for real-time UX.
+
+## Webhooks
+
+| Event | When |
+| --- | --- |
+| `call.received` | Inbound call set up, or outbound originated at Meta |
+| `call.ended` | Call finished — includes duration when Meta sends it |
+| `call.failed` | Hard failure before or during the call |
+| `call.permission_request` | Contact accepted or rejected a permission prompt |
+
+Register endpoints in the console or via [`POST /v1/webhooks`](/webhooks/overview). Only subscribe on numbers where `calling` is enabled.
+
+## What we skip (Zernio-style)
+
+| Zernio | LazyApp |
+| --- | --- |
+| Usage-plan gate + carrier billing (`billableCostUSD`) | Wallet for messages; Meta bills calling to WABA |
+| `GET /v1/whatsapp/calling` config | Not exposed |
+| Enable / PATCH / DELETE calling with `forwardTo` | Not exposed |
+| `recordingEnabled` + per-minute recording surcharge | Not sold |
+| `GET /v1/whatsapp/call-permissions` | Use permission request + webhook |
+| `POST /v1/whatsapp/calls` live outbound dial | Stub only; no PSTN/SIP/WebSocket bridge |
+| Call list filters (`direction`, date range) on API | Cursor list only today |
+
+## Related
+
+- [Capabilities](/concepts/capabilities) — `calling` flag per number
+- [Webhooks — calls](/webhooks/events#calls) — event payloads
+- [WhatsApp rates — Calls](/billing/whatsapp-rates#calls) — Meta fees, not LazyApp carrier legs
+- [Pending gaps vs Zernio](/pending-gaps-zernio) — full calling bridge backlog
