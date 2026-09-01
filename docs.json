@@ -38,6 +38,7 @@
             "group": "WhatsApp",
             "pages": [
               "guides/whatsapp",
+              "guides/sandbox",
               "guides/connecting-whatsapp",
               "guides/phone-numbers",
               "guides/contacts",

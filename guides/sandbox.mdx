@@ -1,0 +1,194 @@
+---
+title: "Sandbox"
+description: "Test WhatsApp sending in test mode before going live — without Zernio-style session activation."
+---
+
+LazyApp separates **test** and **live** data inside one workspace. Use test mode to wire up sends, webhooks, templates, and [Verify](/sending/verify) before you swap to `sk_live_` keys.
+
+There is no Zernio-style `POST /v1/whatsapp/sandbox/sessions`, no reply-to-verify activation, and no locked `sandbox_start` template. Sandbox here means **test mode + optional shared pool number + console helpers** — not a separate API surface.
+
+<Info>
+  Do not confuse this with Meta's **messaging tier** (`TIER_250`, and so on). That is Meta's throughput cap on any number, including yours in live mode. See [Capabilities](/concepts/capabilities) and [Phone numbers](/guides/phone-numbers).
+</Info>
+
+## How LazyApp testing works
+
+| Piece | What it does |
+| --- | --- |
+| **Test mode** (`sk_test_`) | Isolated contacts, messages, templates, and webhooks — never mixes with live |
+| **Sandbox claim** | One shared LazyApp pool WhatsApp number per team, **console only**, test mode only |
+| **Test recipients** | Phone numbers you bookmark in the console so quickstart and send tests default to them |
+| **Quickstart page** | Checklist, copy-paste API snippets, webhook simulation, JSON composer |
+| **Verify in test mode** | Fixed OTP code — no SMS to a real phone |
+
+| Property | LazyApp |
+| --- | --- |
+| API for sandbox setup | **No** — claim and test recipients are console-only |
+| Activation model | Add a test recipient in the console (no WhatsApp reply gate) |
+| Send API | Standard [`POST /v1/messages`](/sending/messages) with an `sk_test_` key |
+| Templates in test | Your workspace templates in test mode — no locked sandbox template |
+| Billing | Test-mode sends are not production traffic; see [Billing](/billing/overview) |
+
+<Callout type="info">
+  To send to many recipients, sync production templates, or run live traffic, connect your own number via [Embedded Signup](/guides/connecting-whatsapp) and promote to live mode — see [Phone numbers](/guides/phone-numbers).
+</Callout>
+
+## Step 1 — Use test mode
+
+1. In the console header, switch to **Test** mode.
+2. Create an `sk_test_` key under **Settings → API keys**.
+3. Confirm mode isolation in [Workspaces and modes](/concepts/workspaces-and-modes).
+
+```bash
+export LAZYAPP_API_KEY="sk_test_..."
+
+curl https://lazyapp.in/v1/capabilities \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+Test keys operate only on test-mode data. A live key cannot read test data and vice versa — promoting an integration is a credential swap, not a code change.
+
+## Step 2 — Get a WhatsApp connection
+
+You need at least one connection in test mode before the API can send.
+
+### Option A — Claim a LazyApp sandbox number (fastest)
+
+On **Connections**, click **Claim sandbox number**. LazyApp assigns one available number from the shared pool and attaches it to your team's **test** workspace.
+
+| Rule | Detail |
+| --- | --- |
+| Mode | Test only — claims always attach to test mode |
+| Limit | One claimed sandbox number per team |
+| Availability | Fails with a clear error when the pool is empty |
+| Release | Disconnect the connection in the console to return the number to the pool |
+
+There is no public API for claim or release. Platform customers follow the same console flow inside their workspace.
+
+### Option B — Connect your own WABA
+
+Run [Embedded Signup](/guides/connecting-whatsapp) while the console is in test mode if you want your own WABA credentials in the test partition. Most teams claim the pool number first, then connect their real number when promoting to live.
+
+List connections (including a claimed sandbox) with capabilities:
+
+```bash
+curl https://lazyapp.in/v1/capabilities \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+```json
+{
+  "data": [
+    {
+      "connection_uuid": "9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d",
+      "display_phone_number": "+15551234567",
+      "is_default": true,
+      "capabilities": {
+        "messages.text": true,
+        "messages.template": true
+      }
+    }
+  ]
+}
+```
+
+## Step 3 — Add test recipients
+
+On **Connections**, add one or more **test recipients** — phones you control that you will message while building.
+
+Test recipients are workspace bookmarks. LazyApp does **not** send a verification template and wait for a WhatsApp reply (unlike Zernio's session activation). Saving a recipient marks it ready for console send tests and quickstart defaults.
+
+There is no `POST /v1/...` endpoint for test recipients today.
+
+## Step 4 — Send a test message
+
+Use the normal messages API. Pass the same `sk_test_` key; LazyApp scopes everything to test mode automatically.
+
+```bash
+curl https://lazyapp.in/v1/messages \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: sandbox-1" \
+  -d '{
+    "type": "text",
+    "to": "+919812345670",
+    "body": "Hello from LazyApp test mode."
+  }'
+```
+
+After the contact replies, the [24-hour customer-service window](/sending/messages#the-24-hour-window) opens and you can send free-form text or interactive messages like any other conversation.
+
+For templates, submit and approve them in test mode the same way as live — see [Templates](/sending/templates).
+
+## Step 5 — Exercise webhooks
+
+Configure a webhook endpoint with your test key:
+
+```bash
+curl https://lazyapp.in/v1/webhooks \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://yourapp.example/webhooks/lazyapp",
+    "subscribed_events": ["message.sent", "message.delivered", "message.read"]
+  }'
+```
+
+Then either:
+
+- **Reply from WhatsApp** on your test recipient to drive real inbound and status events, or
+- Open the console **Quickstart** page and **simulate** `delivered`, `read`, or `failed` on an outbound message you already sent.
+
+Simulated events run through the real webhook pipeline (delivery timelines, customer webhooks, workflow triggers) but are flagged as simulated and are available in test mode only.
+
+The Quickstart **JSON composer** sends arbitrary canonical payloads through the same path as [`POST /v1/messages`](/sending/messages) — useful when you are debugging payload shape before wiring your app.
+
+See [Webhooks](/webhooks/overview) and the [Quickstart](/quickstart) checklist.
+
+## Verify OTP in test mode
+
+[`POST /v1/verify/send`](/sending/verify) and [`POST /v1/verify/check`](/sending/verify) work in test mode with a **fixed development code** (default `000000`). Automated tests can complete the full verify flow without SMS.
+
+OTP fraud limits still apply — resend delay, per-IP recipient fan-out, and daily caps — see [Verify — Test mode](/sending/verify#test-mode) and [Rate limits](/reference/rate-limits).
+
+## Promote to live
+
+When the integration behaves correctly in test mode:
+
+1. Switch the console to **Live** mode.
+2. Connect your production WhatsApp number via [Embedded Signup](/guides/connecting-whatsapp) (or use an existing live connection).
+3. Create an `sk_live_` key with the scopes you need.
+4. Point webhooks at your production URL (live endpoints are separate from test).
+5. Swap the API key in your app — no URL or payload changes required.
+
+Templates, contacts, and message history do **not** copy from test to live. Re-create or re-sync what production needs.
+
+## What we skip (Zernio-style)
+
+| Zernio surface | LazyApp |
+| --- | --- |
+| `GET /v1/whatsapp/phone-numbers` → `sandbox` object | [`GET /v1/capabilities`](/concepts/capabilities) lists connections; sandbox claim is console-only |
+| `POST /v1/whatsapp/sandbox/sessions` + reply activation | Test recipients in the console — no session API |
+| Locked `sandbox_start` template | Use your own templates in test mode |
+| `POST /v1/inbox/conversations` for sandbox sends | [`POST /v1/messages`](/sending/messages) |
+| Session TTLs (24h pending / 7d active) | No session concept |
+| One-phone enforcement via sandbox API | One sandbox **claim** per team; multiple test recipients allowed |
+| 50 messages / 5 recipients daily sandbox caps | Standard [API rate limits](/reference/rate-limits) and send-velocity guards |
+
+## Common issues
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `403` on send — no connection | No WhatsApp connection in test mode | Claim sandbox or connect via Embedded Signup |
+| Claim fails — already have sandbox | Team already claimed a pool number | Disconnect the existing sandbox connection first |
+| Claim fails — none available | Pool exhausted | Connect your own WABA in test mode, or try again later |
+| `422` `send_burst_limit` / `recipient_rate_limit` | Abuse guards tripped | Slow down; see [Rate limits](/reference/rate-limits) |
+| Test key cannot see live messages | Mode isolation | Expected — use `sk_live_` for live data |
+| Webhook never fires on simulate | Wrong mode or missing provider message id | Stay in test mode; simulate only after a successful outbound send |
+
+## Related
+
+- [Quickstart](/quickstart) — end-to-end first send
+- [Workspaces and modes](/concepts/workspaces-and-modes) — test vs live isolation
+- [Phone numbers](/guides/phone-numbers) — sandbox claim vs your own number
+- [Authentication](/authentication) — key prefixes and scopes

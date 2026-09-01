@@ -48,6 +48,7 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 | Sequences / drip product | Scheduled messages + workflows |
 | MCP server | Not a public surface |
 | Zernio 3-step broadcast flow | Single create is deliberate |
+| Zernio sandbox sessions API | Test mode + console claim + test recipients |
 
 ## Docs — Zernio pages vs LazyApp
 
@@ -60,6 +61,7 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 | Contacts & profile | `guides/contacts.mdx` | Done |
 | Phone numbers / purchase / KYC | `guides/phone-numbers.mdx` | Done (BYO model; skip shop/KYC) |
 | Calling | `guides/calling.mdx` | Done (partial — no Zernio bridge) |
+| Sandbox | `guides/sandbox.mdx` | Done (test mode; skip Zernio sessions API) |
 | Group chats | — | When capability GA |
 | Inbox (platform) | `platform/inbox.mdx` + embeds | Partial |
 | Flows | API reference only | Guide TBD |
