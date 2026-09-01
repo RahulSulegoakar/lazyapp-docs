@@ -36,6 +36,8 @@ For your own workspace:
 3. Finish Meta's screens (Business Portfolio, WABA, phone number).
 4. LazyApp stores the connection on the current workspace and mode (`live` / `test`).
 
+During onboarding you can also paste existing Meta credentials (phone number ID, WABA ID, system-user token) in the console. That path is **not** exposed as a public API endpoint — platform integrations should use [setup links](/platform/setup-links) instead.
+
 Subscribe to:
 
 | Event | When |
@@ -44,7 +46,39 @@ Subscribe to:
 | `connection.attention_required` | Meta needs action (review, credentials) |
 | `connection.disconnected` | The link to Meta stopped working |
 
-There is no public `GET /v1/connect/{platform}` OAuth starter for Twitter/Facebook/etc. — that Zernio-style surface does not apply here.
+There is no public `GET /v1/connect/{platform}` OAuth starter for Twitter/Facebook/etc. — that Zernio-style surface does not apply here. There is also no public `POST /v1/connect/whatsapp/credentials` — use Embedded Signup or setup links.
+
+## WhatsApp Business app coexistence
+
+Businesses already on the **WhatsApp Business app** can connect the same number to Cloud API without giving up the app. During Embedded Signup, Meta offers **Connect existing WhatsApp Business app account**. LazyApp marks the connection as coexistence and requests contact and history sync from Meta.
+
+When coexistence is active:
+
+- Messages can mirror between the app and Cloud API (Meta syncs up to about six months of history).
+- Contacts from the app are imported via Meta's `smb_app_state_sync` webhooks.
+- Outbound messages sent from the phone app arrive as `message.received` with an echo flag — treat them like inbound for inbox UX.
+- Revokes in the app emit [`message.deleted`](/webhooks/events#messages) for the original stored message.
+
+**LazyApp-specific:** coexistence numbers report `flows: false` and `flows.data_endpoint: false` on [`GET /v1/capabilities`](/concepts/capabilities). Plan Flow-based onboarding for Cloud-API-only numbers.
+
+**Meta limitations** (same on every BSP):
+
+| Feature | Coexistence |
+| --- | --- |
+| Throughput | Capped at about 20 messages per second |
+| Group chats (app-side) | App groups are not visible via API |
+| Groups API | Not supported — LazyApp does not offer group messaging |
+| Voice/video calls via API | Not supported |
+| Disappearing / view-once messages | Disabled for 1:1 Cloud API chats |
+| Broadcast lists in the app | Disabled |
+
+**History sync window:** LazyApp requests sync immediately after signup. Meta allows about **24 hours** to complete it. If sync never starts, the customer may need to disconnect and run Embedded Signup again.
+
+**Disconnection:** The business disconnects from the WhatsApp Business app (**Settings → Account → Business Platform → Disconnect**). That cannot be done via API. Meta notifies LazyApp; the connection moves to a disconnected state and [`connection.disconnected`](/webhooks/events) fires. Treat webhook absence as inconclusive — poll [`GET /v1/capabilities`](/concepts/capabilities) when you need to confirm liveness.
+
+<Info>
+Coexistence uses the same send and webhook endpoints as a standard Cloud API number. The practical differences are throughput, Flows being off, and read-state quirks when the phone app owns blue ticks.
+</Info>
 
 ## Platform customers (white-label)
 
@@ -84,19 +118,11 @@ When `connection.disconnected` or `connection.attention_required` fires for a cu
 2. Send a template or session message ([quickstart](/quickstart)).
 3. Register webhooks for delivery and inbound ([webhooks](/webhooks/overview)).
 
-Coexistence (WhatsApp Business app + Cloud API on the same number) is supported when Meta's onboarding path allows it. History and revoke events depend on that mode — see `message.deleted` in the [event reference](/webhooks/events#messages).
-
-## What we intentionally skip
-
-| Zernio-style concept | LazyApp |
-| --- | --- |
-| OAuth for 16 social networks | Not a product surface |
-| Headless Facebook Page / LinkedIn org pickers | N/A — WhatsApp Embedded Signup |
-| Bluesky app passwords, Telegram bot codes, Shopify | N/A |
-| Ads-only Meta connect | Not offered |
+Coexistence (WhatsApp Business app + Cloud API on the same number) is supported when Meta's onboarding path allows it — see [WhatsApp Business app coexistence](#whatsapp-business-app-coexistence) above for limits and webhook behaviour.
 
 ## Related
 
+- [WhatsApp overview](/guides/whatsapp) — quick reference and doc map
 - [Setup links](/platform/setup-links) — create, options, revoke
 - [Build a platform](/platform/overview) — customer model and webhook routing
 - [Capabilities](/concepts/capabilities) — what the connected number can do

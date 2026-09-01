@@ -31,7 +31,13 @@
               "concepts/pagination",
               "concepts/errors",
               "concepts/message-lifecycle",
-              "concepts/capabilities",
+              "concepts/capabilities"
+            ]
+          },
+          {
+            "group": "WhatsApp",
+            "pages": [
+              "guides/whatsapp",
               "guides/connecting-whatsapp"
             ]
           },

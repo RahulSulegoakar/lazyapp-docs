@@ -1,0 +1,103 @@
+---
+title: "WhatsApp"
+description: "Send messages, manage templates and contacts, run broadcasts and flows — one API for WhatsApp Cloud."
+---
+
+LazyApp is WhatsApp-only. Everything in these docs — sends, webhooks, templates, platform customers — sits on Meta's WhatsApp Cloud API. You connect a WhatsApp Business Account (WABA) and phone number once; LazyApp holds credentials and gives you a stable REST surface.
+
+Most teams start with [quickstart](/quickstart), then read [connecting WhatsApp](/guides/connecting-whatsapp) when they need console or platform onboarding.
+
+## Quick reference
+
+| What | LazyApp |
+| --- | --- |
+| Message types | Text, template, image, video, audio, document, sticker, location, contacts, reaction, interactive |
+| Template required | Yes — outside the [24-hour window](/sending/messages#the-24-hour-window) |
+| Upload limit | **16 MB** per file by default (`MEDIA_MAX_SIZE_KB`). Meta may refuse a type or size WhatsApp does not accept for that message kind |
+| Scheduling | Yes — `send_at` on [`POST /v1/messages`](/sending/messages#scheduling) |
+| Broadcasts | Yes — [template campaigns](/sending/broadcasts) with segments and caps |
+| Inbox | Yes — [conversations API](/api-reference/conversations/list-conversations) and console |
+| Group chats | No — not supported today |
+| Flows | Yes — [`/v1/flows`](/api-reference/flows/list-flows). Disabled on [coexistence](/guides/connecting-whatsapp#whatsapp-business-app-coexistence) numbers |
+| Calling | Meta-gated — check [`GET /v1/capabilities`](/concepts/capabilities) |
+| Analytics API | No dedicated analytics endpoints |
+
+Do not hard-code calling, block lists, or India payments. Ask [capabilities](/concepts/capabilities) per connection — Meta can flip flags without a deploy on your side.
+
+## Before you start
+
+<Warning>
+WhatsApp requires a **WhatsApp Business Account (WABA)**, not a personal WhatsApp account.
+
+You need:
+
+- A Meta Business Portfolio ([business.facebook.com](https://business.facebook.com))
+- A WABA (created during Embedded Signup)
+- At least one phone number on that WABA
+- Approved [templates](/sending/templates) to start business-initiated conversations
+- Awareness of the **24-hour rule** — free-form replies only within 24 hours of the contact's last message; outside that window you must use an approved template
+</Warning>
+
+New numbers often start in Meta's **sandbox tier** (`TIER_250` — about 250 unique contacts per 24 hours). The limit rises automatically as messaging history and quality improve. Watch `messaging_limit_tier` and `quality_rating` on [capabilities](/concepts/capabilities) and the `phone_number.quality_changed` [webhook](/webhooks/events).
+
+## In this section
+
+<CardGroup cols={2}>
+  <Card title="Connecting WhatsApp" icon="plug" href="/guides/connecting-whatsapp">
+    Console Embedded Signup, platform setup links, coexistence, reconnect
+  </Card>
+  <Card title="Messages" icon="message" href="/sending/messages">
+    Every send type, the 24-hour window, scheduling
+  </Card>
+  <Card title="Templates" icon="file-lines" href="/sending/templates">
+    Create, submit for Meta review, sync status
+  </Card>
+  <Card title="Media" icon="image" href="/sending/media">
+    Upload, retention, Meta's ~30-day expiry
+  </Card>
+  <Card title="Broadcasts" icon="bullhorn" href="/sending/broadcasts">
+    Template sends to a segment with quiet hours
+  </Card>
+  <Card title="Flows" icon="diagram-project" href="/api-reference/flows/list-flows">
+    Interactive forms, surveys, booking — create, publish, read responses
+  </Card>
+  <Card title="Verify" icon="shield-check" href="/sending/verify">
+    OTP send and check with fraud controls
+  </Card>
+  <Card title="Webhooks" icon="bell" href="/webhooks/overview">
+    Signed delivery, retries, event catalogue
+  </Card>
+  <Card title="Capabilities" icon="gauge" href="/concepts/capabilities">
+    What each connected number supports today
+  </Card>
+  <Card title="Build a platform" icon="building" href="/platform/overview">
+    One workspace per customer, setup links, scoped keys
+  </Card>
+  <Card title="WhatsApp rates" icon="indian-rupee-sign" href="/billing/whatsapp-rates">
+    What Meta charges vs what LazyApp bills
+  </Card>
+  <Card title="Migrate from Kapso" icon="arrows-turn-right" href="/migrating/from-kapso">
+    Keep Meta-shaped sends on the proxy, move webhooks and setup links
+  </Card>
+</CardGroup>
+
+## Related endpoints
+
+- [`POST /v1/messages`](/api-reference/messages/send-a-message) — send any message type
+- [`GET /v1/templates`](/api-reference/templates/list-templates) — list and manage templates
+- [`GET /v1/contacts`](/api-reference/contacts/list-contacts) — contacts in the workspace
+- [`GET /v1/conversations`](/api-reference/conversations/list-conversations) — conversation threads
+- [`POST /v1/broadcasts`](/api-reference/broadcasts/create-a-broadcast) — start a broadcast
+- [`GET /v1/capabilities`](/api-reference/capabilities/list-connection-capabilities) — per-number features and limits
+- [`POST /v1/platform/setup-links`](/api-reference/platform/create-a-setup-link) — hosted connect for your customers
+
+## What we skip (Zernio-style)
+
+| Zernio surface | LazyApp |
+| --- | --- |
+| Buy a phone number via API | Connect your own number through Embedded Signup |
+| Headless `POST /connect/whatsapp/credentials` | Console onboarding only — no public credentials-paste API |
+| Conversation-centric inbox create | Recipient-centric [`POST /v1/messages`](/sending/messages) |
+| Group chats API | Not built |
+| Click-to-WhatsApp conversion API | Not documented |
+| Multi-network OAuth hub | WhatsApp only |
