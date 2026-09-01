@@ -46,7 +46,8 @@
             "group": "Billing",
             "pages": [
               "billing/overview",
-              "billing/whatsapp-rates"
+              "billing/whatsapp-rates",
+              "billing/mechanics"
             ]
           },
           {

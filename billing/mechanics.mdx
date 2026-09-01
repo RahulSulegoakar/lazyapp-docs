@@ -1,0 +1,90 @@
+---
+title: "How billing works"
+description: "When the card is charged, how the wallet and usage ledger interact, and why there is no account-day ladder."
+---
+
+Rates and plan prices live on [Pricing](/billing/overview). This page is the mechanics: when money moves, how a message becomes a debit, and how periods and limits work.
+
+LazyApp is **not** graduated social-account pricing. There are no account-days, no “billable units ÷ days in month,” and no free-tier credit that covers the first two Instagram accounts. WhatsApp [connections](/concepts/workspaces-and-modes) are not a seat meter.
+
+## Mental model
+
+```
+subscribe / top up  →  wallet balance
+billable send       →  usage row (total_charge)
+                    →  wallet debit (idempotent per usage id)
+wallet empty / limit →  HTTP 402 on the next send
+```
+
+Subscriptions put product access and optional included credits on the billing account. Message usage draws the **prepaid wallet** in real time (when prepaid enforcement is on). Invoices from the payment provider record successful checkouts (top-ups and subscription payments), not a month-end rollup of every Meta conversation.
+
+## When your card is charged
+
+Charges happen when you **check out**, not when usage crosses a Metronome-style accrual threshold.
+
+| Event | What happens |
+| --- | --- |
+| Subscribe to a plan | Checkout with Dodo Payments (when configured); subscription becomes active; included wallet credits may be applied |
+| Wallet top-up ($10 / $25 / $50 / $100) | Checkout; on `payment.succeeded` the wallet is credited and an [invoice](#invoices) is stored |
+| Auto-recharge | If enabled and balance falls to or below the threshold (default **$5**), LazyApp starts a top-up checkout for the configured package (default **$25**), at most once per hour |
+| Claim onboarding credits | One-time wallet credit (default **$10**) — no card charge |
+
+There is no automatic “accrue until $10 then double the threshold” loop. Brand-new workspaces validate payment when they buy a plan or top-up.
+
+## How a message becomes a charge
+
+1. An outbound message is accepted and (when delivery rules say so) a [usage](/billing/overview#usage-ledger) row is written for the calendar month `YYYY-MM`.
+2. If the send is free (`is_free`), `total_charge` is zero — no debit.
+3. Otherwise `total_charge` = LazyApp charge + tax + payment fee (see [WhatsApp message rates](/billing/whatsapp-rates)).
+4. For a prepaid workspace billing account, that amount is rounded to cents and debited with idempotency key `usage:{id}` so a retry cannot double-charge.
+5. Platform child workspaces skip the team wallet and debit the [platform customer](/platform/overview) prepaid wallet (or accumulate under postpaid / spending limits) instead.
+
+Failed deliveries are not charged by default.
+
+## Billing period
+
+Usage rows carry `billing_period` as a **calendar month** (`2026-09`). Spending limits and period spend totals use the current month. Connecting or disconnecting a WhatsApp number does **not** prorate a seat fee — numbers are not billed as account-days.
+
+## Limits that stop sending
+
+When `billing.enforce_team_wallet` is on (default):
+
+| Condition | Result |
+| --- | --- |
+| Prepaid wallet balance ≤ 0 | Send refused (surfaces as `402` on the API) |
+| Period spend ≥ `spending_limit_cents` | Send refused |
+| Platform customer prepaid wallet empty | Same for that tenant |
+| No billing account / not prepaid-active | Enforcement does not block (until billing is activated) |
+
+Optional `usage_alert_cents` records that an alert fired (at most once per day) when the wallet falls to or below that level — platforms also get `customer.usage_alert` webhooks.
+
+## Invoices
+
+Successful provider payments create invoice rows (number, status, totals, hosted URL / PDF when the provider returns them). The console **Billing** page lists invoices and wallet transactions. Itemization is checkout- and usage-ledger based — not “which social account was connected on which day.”
+
+## Worked example (wallet)
+
+A workspace has **$10.00** onboarding credit, then tops up **$25.00**.
+
+| Step | Wallet |
+| --- | --- |
+| After onboarding credit | $10.00 |
+| After $25 top-up | $35.00 |
+| 40 billable utility sends at $0.10 total each | −$4.00 → **$31.00** |
+| Free service replies in the 24h window | $0 — balance unchanged |
+
+If auto-recharge is on with threshold $5 and package $25, a burst that leaves the wallet at $4.50 starts a $25 top-up checkout (subject to the one-per-hour guard).
+
+## Common questions
+
+- **Do I pay for days a number is connected?** No. Message usage and the subscription cover LazyApp. Meta may still require a payment method on the WABA.
+- **Is there a free credit for “two accounts”?** No social free tier. Onboarding wallet credits (default $10) are the one-time grant.
+- **What window does usage measure?** Calendar month on each usage row.
+- **If I resend the same message?** Idempotency on send and on `usage:{id}` wallet debit prevent double-charging the same usage row; a new message creates a new row.
+- **Platform vs direct workspace?** Direct workspaces use the team billing account. Platform tenants use customer `billing_mode`, wallet, and spending limits — see [Tenant usage](/platform/usage).
+
+## Related
+
+- [Pricing](/billing/overview) — plans and what LazyApp sells
+- [WhatsApp message rates](/billing/whatsapp-rates) — free rules and categories
+- [Errors](/concepts/errors) — `402` vs retryable failures
