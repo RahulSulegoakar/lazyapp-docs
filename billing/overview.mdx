@@ -1,9 +1,17 @@
 ---
-title: "Pricing"
-description: "What LazyApp charges, how the wallet works, and how Meta message categories show up on usage."
+title: "Pricing & costs"
+description: "What LazyApp and Meta each charge for WhatsApp — plans, wallet, and message categories."
 ---
 
-LazyApp is WhatsApp-only. There are no connected-social-account seats, ads meters, SMS segments, or X API pass-throughs on this page.
+WhatsApp has **two separate billing components**: LazyApp platform fees and Meta messaging fees. This page covers LazyApp mechanics; category rules and free-window behaviour live on [WhatsApp message rates](/billing/whatsapp-rates).
+
+LazyApp is WhatsApp-only. There are no connected-social-account seats, ads meters, SMS segments, or X API pass-throughs.
+
+<Info>
+  Authoritative per-category and per-region figures for **Meta** are on [Meta WhatsApp pricing](https://developers.facebook.com/docs/whatsapp/pricing). LazyApp records categories on the [usage ledger](#usage-ledger) and debits your wallet for the LazyApp charge when a send is billable.
+</Info>
+
+## What LazyApp charges
 
 You pay LazyApp in two layers:
 
@@ -11,6 +19,19 @@ You pay LazyApp in two layers:
 2. **A prepaid wallet** that usage draws down when outbound messages are billable.
 
 Platforms can put each [platform customer](/platform/overview) on `prepaid`, `postpaid`, or `inherit` billing and set spending limits — see [Tenant usage](/platform/usage).
+
+There is **no** Zernio-style Usage plan with the first **10,000 outbound messages free each month**. LazyApp meters billable sends against the wallet from the first chargeable message (subject to [free rules](/billing/whatsapp-rates#what-is-free-in-lazyapp) such as service replies inside the 24-hour window and a configurable monthly service allowance — default **1,000** per workspace·mode).
+
+| Item | LazyApp |
+| --- | --- |
+| Subscription | Starter / Growth / Business plans — see [Plans](#plans) |
+| Outbound messages | Wallet debit per billable send (broadcast = one row per recipient) |
+| Dedicated phone number SKU | **Not sold** — connect your WABA via [Embedded Signup](/guides/connecting-whatsapp) or claim a [test sandbox](/guides/sandbox) |
+| Inbound DMs | No per-message LazyApp meter for receiving |
+| Calling — carrier leg / recording | **Not sold** — no CPaaS minute invoice; see [Calling rates](/billing/whatsapp-rates#calls) |
+| Sequences / drip product | Not a separate SKU — use [scheduled messages](/sending/messages#scheduling) and [workflows](/api-reference/workflows/list-workflows) |
+
+When the wallet is empty or a spending limit is hit, sends return **`402`** — treat that as a billing state, not a transient error. See [Errors](/concepts/errors) and [How billing works](/billing/mechanics).
 
 ## Plans
 
@@ -55,14 +76,30 @@ Meta defines conversation / message categories and country rates. LazyApp record
 
 Details and free-window rules: [WhatsApp message rates](/billing/whatsapp-rates).
 
+Meta charges **per delivered template message** (by category and recipient country) and **per minute of outbound calling** when enabled — billed to your WABA, not through LazyApp's wallet. LazyApp does not mark up Meta's fees; the usage ledger stores `meta_rate` for transparency. Non-template messages inside the [24-hour customer service window](/sending/messages#the-24-hour-window) are typically free on Meta's side for service traffic; utility templates may follow Meta's current in-window promotions independently of LazyApp's free rules.
+
+## Sandbox vs production
+
+| Mode | LazyApp | Meta |
+| --- | --- | --- |
+| **Test** (`sk_test_`) | Isolated data; optional [sandbox number claim](/guides/sandbox) from the console | Test traffic; not production billing |
+| **Live** (`sk_live_`) | Wallet and usage ledger apply | Production WABA; template tiers and quality limits apply |
+
+New live numbers often start in Meta's **sandbox messaging tier** (`TIER_250` — about 250 unique contacts per 24 hours). That is Meta throughput, not a LazyApp SKU. See [Capabilities](/concepts/capabilities) and [Phone numbers](/guides/phone-numbers).
+
+LazyApp does **not** sell production numbers ($3–$21/mo) or run KYC for number purchase. You connect a number you control through Embedded Signup, or claim a shared pool number for **test mode only**.
+
 ## What LazyApp does not sell
 
 | Zernio-style meter | LazyApp |
 | --- | --- |
+| Usage plan — first 10k outbound free / month | Wallet + category [free rules](/billing/whatsapp-rates#what-is-free-in-lazyapp) |
 | Graduated “connected social accounts” | Not applicable — WhatsApp [connections](/concepts/workspaces-and-modes), not Instagram/X seats |
-| SMS / 10DLC / voice carrier minutes | Not sold |
+| Dedicated phone-number SKUs ($3–$21/mo, KYC) | [BYO number](/guides/phone-numbers) or test [sandbox claim](/guides/sandbox) |
+| SMS / 10DLC / voice carrier minutes + recording surcharge | Not sold |
+| Outbound calling carrier leg invoiced by LazyApp | Meta calling fees only — [Calling](/guides/calling) |
 | Ads active-ad meters | Not sold |
-| Dedicated phone-number SKUs ($3–$21) | Numbers come from Meta / your WABA connection flow, not a LazyApp number shop |
+| Public country rate API | Console usage ledger; rates in workspace DB |
 
 ## Related
 

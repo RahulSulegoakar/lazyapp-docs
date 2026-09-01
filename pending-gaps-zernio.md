@@ -54,6 +54,7 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 | MCP server | Not a public surface |
 | Zernio 3-step broadcast flow | Single create is deliberate |
 | Zernio sandbox sessions API | Test mode + console claim + test recipients |
+| Zernio Usage plan (10k free outbound / mo) | Subscription + prepaid wallet + free rules |
 
 ## Docs — Zernio pages vs LazyApp
 
@@ -71,7 +72,7 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 | Inbox | `guides/inbox.mdx` + `platform/inbox.mdx` + embeds | Done (recipient-centric; console for typing/archive) |
 | Flows | API reference only | Guide TBD |
 | CTWA | — | Skip |
-| Pricing (platform) | `billing/*` | Partial |
+| Pricing & costs | `billing/overview.mdx`, `billing/whatsapp-rates.mdx`, `billing/mechanics.mdx` | Done |
 | Media & limits reference | `sending/media.mdx` | Partial |
 | Migrate from Kapso | `migrating/from-kapso.mdx` | Done |
 | Migrate from Cloud API | `migrating/from-cloud-api.mdx` | Done |
