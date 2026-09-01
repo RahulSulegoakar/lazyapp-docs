@@ -1,0 +1,103 @@
+---
+title: "Connecting WhatsApp"
+description: "Connect a WhatsApp Business Account via the console or platform setup links, then confirm with webhooks."
+---
+
+Before you can send, a workspace needs a connected WhatsApp number. LazyApp is WhatsApp-only — there is no multi-network OAuth catalogue. Connection always goes through Meta Embedded Signup; you never collect access tokens yourself.
+
+## How to think about it
+
+- **Own workspace:** connect from the LazyApp console (Embedded Signup).
+- **Your customers' numbers:** use [setup links](/platform/setup-links) so each [platform customer](/platform/overview) connects into their own workspace.
+- Confirm from webhooks (`connection.connected` / `customer.connected`), not from the browser redirect alone.
+- After connect, read [capabilities](/concepts/capabilities) for that number — calling, messaging limits, and quality are per connection.
+
+```mermaid
+sequenceDiagram
+  participant U as User or customer
+  participant A as Your app or LazyApp console
+  participant L as LazyApp
+  participant M as Meta
+  A->>L: Start Embedded Signup / create setup link
+  L-->>A: Hosted connect URL
+  A->>U: Open URL
+  U->>M: Authorizes WABA + number
+  M->>L: Signup completes
+  L-->>A: webhook connection.connected / customer.connected
+  Note over A: Store mapping; start sending
+```
+
+## Console Embedded Signup
+
+For your own workspace:
+
+1. Open **Connections** in the LazyApp console.
+2. Start **Connect WhatsApp** (Meta Embedded Signup).
+3. Finish Meta's screens (Business Portfolio, WABA, phone number).
+4. LazyApp stores the connection on the current workspace and mode (`live` / `test`).
+
+Subscribe to:
+
+| Event | When |
+| --- | --- |
+| `connection.connected` | The number is ready to send |
+| `connection.attention_required` | Meta needs action (review, credentials) |
+| `connection.disconnected` | The link to Meta stopped working |
+
+There is no public `GET /v1/connect/{platform}` OAuth starter for Twitter/Facebook/etc. — that Zernio-style surface does not apply here.
+
+## Platform customers (white-label)
+
+When each of *your* users brings their own WhatsApp number:
+
+1. Create a [platform customer](/platform/overview#step-1-create-a-customer-per-tenant).
+2. Create a [setup link](/platform/setup-links) with their `customer_id` and your `redirect_url`.
+3. Send them the returned `url` (email or **Connect WhatsApp** button).
+4. Confirm with `customer.connected` (and `setup_link.failed` on failure).
+
+```bash
+curl https://lazyapp.in/v1/platform/setup-links \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "cus_9f8b1c2d",
+    "expires_in_days": 7,
+    "use_policy": "single",
+    "allowed_connection_type": "new",
+    "redirect_url": "https://yourapp.example/settings/whatsapp?connected=1"
+  }'
+```
+
+### Headless vs hosted
+
+LazyApp hosts the connect UI at `/connect/{token}`. You do not build a Meta page picker yourself — WhatsApp Embedded Signup selects the WABA and number inside Meta's flow.
+
+Optional per-link `success_webhook_url` / `failure_webhook_url` fire in addition to your workspace webhooks. Still treat them as secondary to `customer.connected` / `setup_link.failed`.
+
+### Reconnect
+
+When `connection.disconnected` or `connection.attention_required` fires for a customer, issue a new setup link with `allowed_connection_type: "reconnect"` (or `either`) and prompt them in your UI. Details in [setup links](/platform/setup-links).
+
+## After connect
+
+1. `GET /v1/capabilities` — confirm the number is listed and which features Meta granted.
+2. Send a template or session message ([quickstart](/quickstart)).
+3. Register webhooks for delivery and inbound ([webhooks](/webhooks/overview)).
+
+Coexistence (WhatsApp Business app + Cloud API on the same number) is supported when Meta's onboarding path allows it. History and revoke events depend on that mode — see `message.deleted` in the [event reference](/webhooks/events#messages).
+
+## What we intentionally skip
+
+| Zernio-style concept | LazyApp |
+| --- | --- |
+| OAuth for 16 social networks | Not a product surface |
+| Headless Facebook Page / LinkedIn org pickers | N/A — WhatsApp Embedded Signup |
+| Bluesky app passwords, Telegram bot codes, Shopify | N/A |
+| Ads-only Meta connect | Not offered |
+
+## Related
+
+- [Setup links](/platform/setup-links) — create, options, revoke
+- [Build a platform](/platform/overview) — customer model and webhook routing
+- [Capabilities](/concepts/capabilities) — what the connected number can do
+- [Event reference](/webhooks/events) — `connection.*` and `customer.connected`

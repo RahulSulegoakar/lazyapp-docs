@@ -16,8 +16,11 @@ Subscribe to what you handle by listing types in `subscribed_events`, or omit it
 | `message.read` | The recipient opened it |
 | `message.played` | A voice note was played |
 | `message.failed` | Delivery failed. `error_message` carries the reason |
+| `message.deleted` | A coexistence revoke deleted a previously stored message. Payload is the original message plus `deleted_at` |
+| `reaction.received` | Someone added or removed an emoji reaction. Also still arrives as `message.received` with `type: reaction` |
+| `conversation.started` | First time this contact opens a thread on a connection (not on reopen) |
 
-`data.message` includes `metadata` you attached when sending, the `request_id` of the originating API call, and `provider_message_id`.
+`data.message` includes `conversation_id` (`cnv_…`), `metadata` you attached when sending, the `request_id` of the originating API call, `provider_message_id`, and `contact.bsuid` when Meta provides one.
 
 <Note>
   These do not arrive in order. A `message.read` may land before the `message.delivered`
@@ -91,8 +94,10 @@ Codes are redacted from all three payloads.
 
 | Event | When |
 | --- | --- |
-| `call.received` | An inbound WhatsApp call |
-| `call.ended` | A call finished. Includes duration |
+| `call.received` | An inbound WhatsApp call is set up, or an outbound call is originated |
+| `call.ended` | A call finished (answered hangup, no-answer, rejected). Includes duration when known |
+| `call.failed` | Meta reported a hard `FAILED` status before or during the call |
+| `call.permission_request` | The contact accepted or rejected a call-permission request (`response`: `accept` / `reject`) |
 
 Only fires on numbers where Meta has enabled calling. Check [capabilities](/concepts/capabilities).
 

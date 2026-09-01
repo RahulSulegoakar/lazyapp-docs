@@ -29,7 +29,8 @@
               "concepts/idempotency",
               "concepts/pagination",
               "concepts/errors",
-              "concepts/capabilities"
+              "concepts/capabilities",
+              "guides/connecting-whatsapp"
             ]
           },
           {
