@@ -5,6 +5,8 @@ description: "Build a WhatsApp inbox for each customer — webhook-first ingesti
 
 You want each customer to see and answer WhatsApp conversations inside your product. The architecture that scales: **webhooks write your inbox database; API calls are for sending, backfill, and embeds.**
 
+For the shared WhatsApp inbox surface itself (list threads, reply, webhooks, what is console-only), start at [Inbox](/guides/inbox). This page is the **platform** recipe on top of that API.
+
 ## The model
 
 Conversations belong to a customer's workspace. Scope them with a customer-scoped key or `X-LazyApp-Customer`:

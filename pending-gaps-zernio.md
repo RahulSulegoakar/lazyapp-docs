@@ -32,6 +32,10 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 | Live number-info / health API | `GET /v1/whatsapp/number-info`, account health | Cached fields on `GET /v1/capabilities`; live read console-only | Liveness after coexistence disconnect |
 | Analytics API | Listed as No on Zernio hub | Console usage only | Low priority |
 | Hosted Flow data endpoints | Managed encryption | Customer hosts `data_endpoint_uri` | Documented; no managed hosting |
+| Public typing indicator API | Inbox typing endpoint | Console session only | Low priority if embeds cover UX |
+| Public archive / pin thread API | Archive on inbox conversations | Console per-user thread state | |
+| Voice note flag on `POST /v1/messages` | `voiceNote: true` | Console + Meta-compat `audio.voice`; not on V1 JSON | |
+| Delete outbound message via API | `DELETE …/messages/{id}` | Coexistence revoke → `message.deleted` only | |
 
 ## Intentionally out of scope
 
@@ -40,6 +44,7 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 | Buy phone numbers via API ($3–21/mo, KYC) | Connect via Embedded Signup / setup links |
 | `POST /connect/whatsapp/credentials` | Embedded Signup + setup links; console paste for own onboarding |
 | Conversation-centric inbox create | Recipient-centric `POST /v1/messages` |
+| Unified inbox (IG/FB comments + reviews + DMs) | WhatsApp DMs only |
 | Multi-network (IG, FB, Telegram, SMS) | WhatsApp-only |
 | Account-days / social-seat billing | Wallet + plans + platform customer billing |
 | SSO / SCIM | Not built |
@@ -63,7 +68,7 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 | Calling | `guides/calling.mdx` | Done (partial — no Zernio bridge) |
 | Sandbox | `guides/sandbox.mdx` | Done (test mode; skip Zernio sessions API) |
 | Group chats | `guides/groups.mdx` | Done (partial — no participant/join APIs) |
-| Inbox (platform) | `platform/inbox.mdx` + embeds | Partial |
+| Inbox | `guides/inbox.mdx` + `platform/inbox.mdx` + embeds | Done (recipient-centric; console for typing/archive) |
 | Flows | API reference only | Guide TBD |
 | CTWA | — | Skip |
 | Pricing (platform) | `billing/*` | Partial |

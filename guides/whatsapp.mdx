@@ -16,7 +16,7 @@ Most teams start with [quickstart](/quickstart), then read [connecting WhatsApp]
 | Upload limit | **16 MB** per file by default (`MEDIA_MAX_SIZE_KB`). Meta may refuse a type or size WhatsApp does not accept for that message kind |
 | Scheduling | Yes — `send_at` on [`POST /v1/messages`](/sending/messages#scheduling) |
 | Broadcasts | Yes — [template campaigns](/sending/broadcasts) with segments and caps |
-| Inbox | Yes — [conversations API](/api-reference/conversations/list-conversations) and console |
+| Inbox | Yes — [Inbox guide](/guides/inbox), conversations API, and console |
 | Group chats | Meta-gated — [`GET /v1/capabilities`](/concepts/capabilities); see [Group chats](/guides/groups) |
 | Flows | Yes — [`/v1/flows`](/api-reference/flows/list-flows). Disabled on [coexistence](/guides/connecting-whatsapp#whatsapp-business-app-coexistence) numbers |
 | Calling | Meta-gated — check [`GET /v1/capabilities`](/concepts/capabilities) |
@@ -60,6 +60,9 @@ New numbers often start in Meta's **sandbox tier** (`TIER_250` — about 250 uni
   </Card>
   <Card title="Contacts & profile" icon="address-book" href="/guides/contacts">
     Upsert contacts, record consent, business profile via Meta proxy.
+  </Card>
+  <Card title="Inbox" icon="inbox" href="/guides/inbox">
+    List conversations, fetch messages, reply with POST /v1/messages.
   </Card>
   <Card title="Group chats" icon="users" href="/guides/groups">
     Create groups and send with group_id — capability-gated; no participant APIs yet.

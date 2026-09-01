@@ -1,0 +1,192 @@
+---
+title: "Inbox"
+description: "List WhatsApp conversations, fetch messages, and reply with POST /v1/messages."
+---
+
+LazyApp's inbox is WhatsApp direct messages only — not Instagram comments, Facebook reviews, or a multi-network unified feed. Conversations are **1:1 threads** between a [connection](/concepts/glossary#connection) and a [contact](/concepts/glossary#contact). Groups are separate — see [Group chats](/guides/groups).
+
+Unlike Zernio's conversation-centric inbox (`POST /v1/inbox/conversations/.../messages`), LazyApp is **recipient-centric**: you list threads with `/v1/conversations`, then **send with [`POST /v1/messages`](/sending/messages)** addressed to the contact's phone (or BSUID). Conversations are created automatically when messages flow.
+
+<Info>
+  Building an inbox **inside your SaaS for each tenant**? Use the same endpoints with a customer-scoped key, then read [Tenant inbox](/platform/inbox) for webhook-first architecture and [embedded components](/platform/embedded-components).
+</Info>
+
+## Feature matrix
+
+| Feature | LazyApp |
+| --- | --- |
+| List conversations | Yes — [`GET /v1/conversations`](/api-reference/conversations/list-conversations) |
+| Fetch messages in a thread | Yes — [`GET /v1/conversations/{id}/messages`](/api-reference/conversations/list-messages-in-a-conversation) |
+| Send text / media / interactive | Yes — [`POST /v1/messages`](/sending/messages) |
+| Quote a specific message | Yes — `context.message_id` (Meta `wamid`) |
+| React with emoji | Yes — `type: reaction` on [`POST /v1/messages`](/sending/messages#types) |
+| Commerce (product, catalog, carousel) | Yes — [Catalog](/sending/catalog); session messages only |
+| Location & contact cards | Yes — message `type` `location` / `contacts` |
+| Typing indicator | **Console only** — not on the public `/v1` API |
+| Archive / pin / mute thread | **Console only** — per-user thread state, not `/v1` |
+| Voice notes (`voice: true` / `voiceNote`) | **Console** (and Meta-compat proxy); not a field on public `POST /v1/messages` today |
+| Delete outbound message via API | **Not built** — `message.deleted` covers coexistence revokes from the phone app |
+| Create conversation then post into it | **Skip** — send to the recipient; LazyApp attaches the conversation |
+
+## Direct messages
+
+### List conversations
+
+Most recently active first. Filter with `status` (`open`, `pending`, `resolved`, `closed`) or `assignee_id`. Cursor-paginated (`limit` 1–100, default 25).
+
+```bash
+curl "https://lazyapp.in/v1/conversations?limit=50&status=open" \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+```json
+{
+  "data": [
+    {
+      "id": "cnv_…",
+      "status": "open",
+      "contact": {
+        "uuid": "…",
+        "phone_number": "+919812345670",
+        "bsuid": null
+      },
+      "assignee": { "id": 12, "name": "Asha" },
+      "messages_count": 14,
+      "last_message_at": "2026-09-01T18:30:00+00:00",
+      "last_inbound_at": "2026-09-01T18:29:00+00:00"
+    }
+  ],
+  "next_cursor": "eyJpZCI6MTIzfQ"
+}
+```
+
+**Required scope:** `messages:read`
+
+### Fetch messages
+
+Newest first. `limit` 1–200, default 50.
+
+```bash
+curl "https://lazyapp.in/v1/conversations/cnv_…/messages?limit=50" \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+Each row includes `uuid`, `direction`, `status`, `type`, `body`, `to` / `from`, `provider_message_id`, and `created_at`.
+
+Prefer [webhooks](/webhooks/overview) for live traffic. List endpoints are for backfill and reconciliation — see [Tenant inbox](/platform/inbox#webhooks-write-your-inbox-not-polling).
+
+### Reply in a conversation
+
+Address the **contact**, not a conversation id:
+
+```bash
+curl -X POST https://lazyapp.in/v1/messages \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: reply-1" \
+  -d '{
+    "type": "text",
+    "to": "+919812345670",
+    "body": "Yes, that size is in stock.",
+    "context": { "message_id": "wamid.HBgMOTE5ODEyMzQ1Njcw" }
+  }'
+```
+
+`context.message_id` quotes the inbound message in WhatsApp. Outside the [24-hour window](/sending/messages#the-24-hour-window), send a [template](/sending/templates) instead — LazyApp refuses free-form sends with `customer_service_window_closed`.
+
+Check the window before choosing a type:
+
+```bash
+curl https://lazyapp.in/v1/contacts/{contact} \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+`service_window.open` / `state` (`open`, `expiring`, `closed`) tells you whether free-form is allowed.
+
+### Attachments
+
+Upload first ([Media](/sending/media)), then send:
+
+```json
+{
+  "type": "image",
+  "to": "+919812345670",
+  "media_id": "…",
+  "caption": "Your receipt"
+}
+```
+
+LazyApp's upload ceiling is **16 MB** per file by default (`MEDIA_MAX_SIZE_KB`). Meta may still refuse a type or size WhatsApp does not accept for that message kind. Do not invent per-type caps beyond what Meta documents for Cloud API.
+
+Audio sends as a normal audio attachment on `POST /v1/messages`. True **voice-note UI** (waveform) is available from the **console inbox** composer; the public JSON body does not accept a `voice` / `voiceNote` flag today. The Meta-compat proxy can pass Meta's `audio.voice` when you use that path.
+
+### Interactive and commerce
+
+Reply buttons, lists, CTA URL, flows, and [catalog / product / carousel](/sending/catalog) messages all use `type: interactive` on [`POST /v1/messages`](/sending/messages). They are session messages — they need an open customer-service window.
+
+When a contact submits a cart, you get `message.received` with `type: order` and `content.order`. Product "Message business" referrals carry product metadata on the inbound message — see [Catalog](/sending/catalog) and [Event reference](/webhooks/events).
+
+### Reactions
+
+```json
+{
+  "type": "reaction",
+  "to": "+919812345670",
+  "reaction": {
+    "message_id": "wamid.…",
+    "emoji": "👍"
+  }
+}
+```
+
+Empty `emoji` removes the reaction. Inbound reactions arrive as `reaction.received` (and also as `message.received` with `type: reaction`).
+
+## Console vs API
+
+| Action | Where |
+| --- | --- |
+| Shared inbox UI, assignment, pin / archive / mute | LazyApp **console** |
+| Typing indicator while an agent composes | Console (`POST …/inbox/conversations/{id}/typing`) — session auth |
+| Programmatic list / send / webhooks | Public `/v1` API |
+| Drop-in tenant UI | [Embedded inbox](/platform/embedded-components) |
+
+## Webhooks
+
+Subscribe once; do not poll conversations for new DMs.
+
+| Event | When |
+| --- | --- |
+| `message.received` | Inbound message (text, media, buttons, orders, …) |
+| `message.sent` / `delivered` / `read` / `played` / `failed` | Outbound lifecycle |
+| `message.deleted` | Coexistence revoke deleted a stored message |
+| `reaction.received` | Emoji added or removed (`emoji` empty on removal) |
+| `conversation.started` | First thread for this contact on a connection |
+
+Full catalogue: [Event reference](/webhooks/events). Verify signatures: [Verifying webhooks](/webhooks/verifying).
+
+Meta does not expose incoming-message edits or recipient-side unsends, so LazyApp does not emit `message.edited` or inbound deletes as first-class edit events.
+
+## Notes
+
+- **24-hour window** — free-form only after the contact's last message; templates reopen the conversation.
+- **Templates** — required to start or restart outside the window.
+- **Delivery** — follow status on webhooks; message rows also carry `status`.
+- **WhatsApp only** — no unified Instagram / Facebook / Telegram inbox API.
+
+## What we skip (Zernio-style)
+
+| Zernio surface | LazyApp |
+| --- | --- |
+| `POST /v1/inbox/conversations/{id}/messages` | [`POST /v1/messages`](/sending/messages) to the recipient |
+| `accountId` on every send | Workspace from API key; optional `phone_number_id` / `connection_uuid` |
+| Unified multi-network inbox (DMs + comments + reviews) | WhatsApp DMs only |
+| Public typing / archive / delete-message APIs | Console (typing, archive); delete not on `/v1` |
+| `voiceNote: true` on inbox compose | Console voice; public `/v1` audio attachment without voice flag |
+
+## Related
+
+- [Messages](/sending/messages) — every send type
+- [Tenant inbox](/platform/inbox) — multi-tenant webhook architecture
+- [Embedded components](/platform/embedded-components) — iframe inbox
+- [Catalog](/sending/catalog) — product and commerce messages
+- [Webhooks](/webhooks/overview) — delivery and events
