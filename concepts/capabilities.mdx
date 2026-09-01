@@ -29,6 +29,7 @@ curl https://lazyapp.in/v1/capabilities \
         "calling": false,
         "block_users": false,
         "groups": false,
+        "messages.group": false,
         "commerce.catalog_sync": false
       }
     }
@@ -41,7 +42,7 @@ curl https://lazyapp.in/v1/capabilities \
 Two different reasons, and the distinction matters:
 
 - **Meta has not granted it to you.** Calling and block lists start `false` for everyone. When Meta approves your account, LazyApp turns them on per connection — no deploy on your side, no code change. Your integration should start working the moment the flag flips.
-- **It is not built yet.** Group messaging and commerce catalog sync are on the roadmap.
+- **It is not built yet, or only partially shipped.** Group participant management and join-request APIs are still on the roadmap; create/list/send exist but default off until Meta grants eligibility. Commerce catalog sync may also start `false` per connection.
 
 Either way the correct client behaviour is the same: read the flag, and degrade gracefully when it is `false`.
 

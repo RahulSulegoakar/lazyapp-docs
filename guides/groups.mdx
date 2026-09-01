@@ -1,0 +1,181 @@
+---
+title: "Group chats"
+description: "Create WhatsApp groups and send to them — Meta-gated, capability-controlled."
+---
+
+WhatsApp **group chats** are multi-participant threads on the platform — not [contact segments](/sending/broadcasts) used for broadcast targeting.
+
+LazyApp exposes a small groups surface today: **create**, **list**, **show**, and **send** via [`POST /v1/messages`](/sending/messages). Both group management and group sends are **off by default** until Meta grants the feature and LazyApp enables the capability flags on your connection.
+
+<Warning>
+**Coexistence numbers** (Cloud API + WhatsApp Business app on the same line) cannot use Meta's Groups API. Connect a **Cloud-API-only** number instead. See [WhatsApp Business app coexistence](/guides/connecting-whatsapp#whatsapp-business-app-coexistence).
+</Warning>
+
+## Check before you build
+
+Ask capabilities per connection — do not hard-code group support:
+
+```bash
+curl https://lazyapp.in/v1/capabilities \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+| Capability | Controls |
+| --- | --- |
+| `groups` | [`POST /v1/groups`](/guides/groups#create-a-group), list, and refresh |
+| `messages.group` | [`POST /v1/messages`](/sending/messages) with `recipient.type: "group_id"` |
+
+Both default to `false`. When Meta approves your WABA for groups, LazyApp can flip them on per connection via `capability_overrides` — your integration should read the flags and degrade gracefully until they are `true`.
+
+<Info>
+  There is no `accountId` header or query param. Your API key scopes every call to one workspace and mode. Route sends with `phone_number_id` or `connection_uuid` when you have several numbers.
+</Info>
+
+## What LazyApp supports today
+
+| Surface | Status |
+| --- | --- |
+| [`GET /v1/groups`](/guides/groups#list-groups) | List groups in the workspace (cursor-paginated) |
+| [`POST /v1/groups`](/guides/groups#create-a-group) | Create a group via Meta; store a local mirror |
+| [`GET /v1/groups/{uuid}`](/guides/groups#retrieve-a-group) | One group by LazyApp uuid; optional Meta refresh |
+| [`POST /v1/messages`](/guides/groups#send-to-a-group) with `recipient.type: "group_id"` | Outbound to a Meta group id |
+| Add / remove participants | **Not built** |
+| Invite link endpoint | **Not built** — `invite_link` is returned on create when Meta provides it |
+| Join request list / approve | **Not built** |
+| Zernio-style `POST /v1/inbox/conversations/.../messages` | Use [`POST /v1/messages`](/sending/messages) instead |
+
+Scopes: `messages:read` for list/show; `messages:send` for create and group sends.
+
+## Create a group
+
+Requires `groups: true` on the connection.
+
+```bash
+curl -X POST https://lazyapp.in/v1/groups \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: group-support-1" \
+  -d '{
+    "subject": "Customer Support Team",
+    "description": "Internal support coordination",
+    "join_approval_mode": "approval_required",
+    "phone_number_id": "123456789012345"
+  }'
+```
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `subject` | Yes | Group name (max 128 characters) |
+| `description` | No | Max 2048 characters |
+| `join_approval_mode` | No | `auto_approve` (default) or `approval_required` |
+| `phone_number_id` | No | Meta phone number id — omit when the workspace has one default connection |
+| `connection_uuid` | No | LazyApp connection uuid instead of `phone_number_id` |
+
+```json
+{
+  "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "provider_group_id": "Y2FwaV9ncm91cDoxMjM",
+  "provider_request_id": null,
+  "subject": "Customer Support Team",
+  "description": "Internal support coordination",
+  "join_approval_mode": "approval_required",
+  "invite_link": "https://chat.whatsapp.com/AbCdEf",
+  "status": "active",
+  "total_participant_count": null,
+  "connection_uuid": "9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d",
+  "phone_number_id": "123456789012345",
+  "provider_created_at": null,
+  "created_at": "2026-09-01T18:30:00+00:00",
+  "updated_at": "2026-09-01T18:30:00+00:00"
+}
+```
+
+`status` is `active` when Meta returns a group id immediately, or `pending` when Meta only returns a `request_id`. Store `provider_group_id` — you need it to send messages to the group.
+
+If `groups` is off, create returns `422` with a message pointing you to [`GET /v1/capabilities`](/concepts/capabilities).
+
+## List groups
+
+Newest first, cursor-paginated:
+
+```bash
+curl "https://lazyapp.in/v1/groups?limit=25" \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+```json
+{
+  "data": [
+    {
+      "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "subject": "Customer Support Team",
+      "provider_group_id": "Y2FwaV9ncm91cDoxMjM",
+      "status": "active",
+      "connection_uuid": "9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d",
+      "phone_number_id": "123456789012345"
+    }
+  ],
+  "next_cursor": "eyJpZCI6MTIzfQ"
+}
+```
+
+Use [`cursor pagination`](/concepts/pagination) with `cursor=` and `limit=` (max 100).
+
+## Retrieve a group
+
+```bash
+curl "https://lazyapp.in/v1/groups/a1b2c3d4-e5f6-7890-abcd-ef1234567890" \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+Pass `?refresh=true` to pull the latest subject, description, participant count, and suspension state from Meta when `provider_group_id` is set. Refresh requires `groups: true` on the connection.
+
+## Send to a group
+
+Use the standard messages API with a **group recipient**, not a phone number in `to`:
+
+```bash
+curl -X POST https://lazyapp.in/v1/messages \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: group-msg-1" \
+  -d '{
+    "type": "text",
+    "recipient": {
+      "type": "group_id",
+      "value": "Y2FwaV9ncm91cDoxMjM"
+    },
+    "body": "Hello team!"
+  }'
+```
+
+`value` is Meta's group id (`provider_group_id` from create or list). Requires `messages.group: true`.
+
+Templates and other message types follow the same `recipient` shape when Meta allows them for groups. If `messages.group` is off, send returns `422`.
+
+<Note>
+  Group outbound sends do not attach to a 1:1 [conversation](/api-reference/conversations/list-conversations) row the way phone-number sends do. Inbound group traffic still arrives through Meta webhooks when configured.
+</Note>
+
+## Coexistence and Cloud-API-only numbers
+
+Meta disables group create, list, and management for numbers running **coexistence** (WhatsApp Business app + Cloud API on the same MSISDN). LazyApp does not expose an API to flip a number out of coexistence — the business disconnects from the app on the phone (**Settings → Account → Business Platform → Disconnect**), then reconnects via [Embedded Signup](/guides/connecting-whatsapp) without choosing the existing app account path.
+
+Until then, expect `groups` and `messages.group` to stay unusable even if flags were toggled manually.
+
+## What we skip (Zernio-style)
+
+| Zernio surface | LazyApp |
+| --- | --- |
+| `POST /v1/whatsapp/wa-groups` | [`POST /v1/groups`](/guides/groups#create-a-group) |
+| `accountId` on every call | Workspace scoped by API key; optional `phone_number_id` / `connection_uuid` |
+| Add / remove participants APIs | Not built — [backlog](/pending-gaps-zernio) |
+| `POST …/invite-link`, join-request approve/list | Not built — invite link on create only |
+| Inbox conversation send | [`POST /v1/messages`](/sending/messages) with `group_id` recipient |
+
+## Related
+
+- [Capabilities](/concepts/capabilities) — read flags before enabling UI
+- [Connecting WhatsApp](/guides/connecting-whatsapp) — coexistence limits
+- [Messages](/sending/messages) — message types and the 24-hour window
+- [Pending gaps vs Zernio](/pending-gaps-zernio) — participant and join-request APIs

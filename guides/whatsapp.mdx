@@ -17,7 +17,7 @@ Most teams start with [quickstart](/quickstart), then read [connecting WhatsApp]
 | Scheduling | Yes — `send_at` on [`POST /v1/messages`](/sending/messages#scheduling) |
 | Broadcasts | Yes — [template campaigns](/sending/broadcasts) with segments and caps |
 | Inbox | Yes — [conversations API](/api-reference/conversations/list-conversations) and console |
-| Group chats | No — not supported today |
+| Group chats | Meta-gated — [`GET /v1/capabilities`](/concepts/capabilities); see [Group chats](/guides/groups) |
 | Flows | Yes — [`/v1/flows`](/api-reference/flows/list-flows). Disabled on [coexistence](/guides/connecting-whatsapp#whatsapp-business-app-coexistence) numbers |
 | Calling | Meta-gated — check [`GET /v1/capabilities`](/concepts/capabilities) |
 | Analytics API | No dedicated analytics endpoints |
@@ -60,6 +60,9 @@ New numbers often start in Meta's **sandbox tier** (`TIER_250` — about 250 uni
   </Card>
   <Card title="Contacts & profile" icon="address-book" href="/guides/contacts">
     Upsert contacts, record consent, business profile via Meta proxy.
+  </Card>
+  <Card title="Group chats" icon="users" href="/guides/groups">
+    Create groups and send with group_id — capability-gated; no participant APIs yet.
   </Card>
   <Card title="Templates" icon="file-lines" href="/sending/templates">
     Create, submit for Meta review, sync status
@@ -111,6 +114,6 @@ New numbers often start in Meta's **sandbox tier** (`TIER_250` — about 250 uni
 | Headless `POST /connect/whatsapp/credentials` | Console onboarding only — no public credentials-paste API |
 | Conversation-centric inbox create | Recipient-centric [`POST /v1/messages`](/sending/messages) |
 | Sandbox sessions + reply activation | [Test mode + console sandbox](/guides/sandbox) |
-| Group chats API | Not built |
+| Full groups API (participants, join requests) | Partial — create/list/send only; see [Group chats](/guides/groups) |
 | Click-to-WhatsApp conversion API | Not documented |
 | Multi-network OAuth hub | WhatsApp only |

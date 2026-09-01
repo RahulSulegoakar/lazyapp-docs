@@ -7,7 +7,7 @@ description: "Internal tracker of product and documentation gaps compared to Zer
 
 Internal tracker for LazyApp vs [Zernio WhatsApp API](https://docs.zernio.com). **Code wins** — update this file when we ship or explicitly decline something.
 
-Last reviewed: 2026-09-01
+Last reviewed: 2026-09-02
 
 <Note>
 This page is for the LazyApp team and implementers comparing surfaces to Zernio. Customer-facing docs link here only where we explicitly document a skip.
@@ -23,7 +23,7 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 | Meta Template Library via API | `library_template_name` + lookup | Console link to Meta; standard submit flow | Faster onboarding |
 | Contact bulk import API | `POST /v1/contacts/bulk` (1k) | Loop `POST /v1/contacts` or console | |
 | Contact tags via API | Tags on create/update | Tags in console; `attributes` JSON on API | |
-| Groups GA | Full groups API | `/v1/groups` exists; `groups: false` in capabilities | Non-coexistence numbers |
+| Groups participant / invite / join APIs | Add/remove participants, invite link, join requests | Create, list, show, group send only | `groups` + `messages.group` gated; non-coexistence |
 | Calling docs + UX | Calling API page | Permission request + webhook history; no PSTN/SIP bridge | `guides/calling.mdx` documents today; Zernio bridge backlog |
 | Outbound dial + forwardTo API | Live dial + tel/sip/wss | `business_initiated` stub only | Full CPaaS bridge |
 | Block users native `/v1` | Dedicated route | Meta-compat proxy only | |
@@ -62,7 +62,7 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 | Phone numbers / purchase / KYC | `guides/phone-numbers.mdx` | Done (BYO model; skip shop/KYC) |
 | Calling | `guides/calling.mdx` | Done (partial — no Zernio bridge) |
 | Sandbox | `guides/sandbox.mdx` | Done (test mode; skip Zernio sessions API) |
-| Group chats | — | When capability GA |
+| Group chats | `guides/groups.mdx` | Done (partial — no participant/join APIs) |
 | Inbox (platform) | `platform/inbox.mdx` + embeds | Partial |
 | Flows | API reference only | Guide TBD |
 | CTWA | — | Skip |
