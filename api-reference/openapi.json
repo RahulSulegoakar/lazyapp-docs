@@ -7586,6 +7586,134 @@
         }
       }
     },
+    "/v1/webhooks/{webhook}/test": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Send a test webhook delivery",
+        "description": "Queues a signed test payload to the endpoint so you can verify URL, headers, and signature handling. The body is marked `test: true` and must never be treated as production traffic.\n\n**Required scope:** `webhooks:write`",
+        "parameters": [
+          {
+            "name": "webhook",
+            "in": "path",
+            "required": true,
+            "description": "Endpoint id.",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Optional. Makes this write safe to retry: the same key replays the first response instead of acting twice.",
+            "schema": {
+              "type": "string",
+              "maxLength": 255
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "event": {
+                    "type": "string",
+                    "description": "Event type to stamp on the test payload. Defaults to `message.sent`.",
+                    "example": "message.delivered"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Test delivery queued.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "queued",
+                    "event",
+                    "id"
+                  ],
+                  "properties": {
+                    "queued": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "event": {
+                      "type": "string",
+                      "example": "message.delivered"
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Stable event id for this test payload (`evt_test_…`).",
+                      "example": "evt_test_9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The key lacks the required scope, or is restricted from this phone number.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found in this workspace.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Endpoint is paused, or the event type is unknown.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/webhooks/{webhook}/resume": {
       "post": {
         "tags": [

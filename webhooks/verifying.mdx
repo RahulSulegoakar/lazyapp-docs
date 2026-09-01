@@ -83,7 +83,7 @@ abort_unless(
 
 ## Rotating a secret
 
-Rotate from the console. Replays continue to verify because they are re-signed with the current secret by default.
+Use [`POST /v1/webhooks/{webhook}/rotate-secret`](/api-reference/webhooks/rotate-a-webhook-signing-secret) or rotate from the console. Replays continue to verify because they are re-signed with the current secret by default.
 
 ## Meta's inbound signature
 

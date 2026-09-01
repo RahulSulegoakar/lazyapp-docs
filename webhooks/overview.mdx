@@ -1,18 +1,44 @@
 ---
 title: "Webhooks"
-description: "How LazyApp tells you what happened."
+description: "How LazyApp webhook deliveries work, including retries, idempotency, and signature verification."
 ---
 
-Sending is synchronous; everything after it is not. Delivery reports, replies, template approvals and quality changes all arrive as webhooks.
+Sending is synchronous; everything after it is not. Delivery reports, replies, template approvals, and quality changes arrive as signed webhooks.
 
-## Registering an endpoint
+## How to think about webhooks
+
+- Subscribe only to the events you actually handle.
+- Treat each delivery as an event notification, not a full source of truth sync.
+- Use the webhook event `id` (also in `X-LazyApp-Delivery`) as your deduplication key.
+- Verify `X-LazyApp-Signature` with the signing secret shown when you create the endpoint.
+- Acknowledge quickly and move heavier work to async jobs.
+
+## Delivery flow
+
+<Steps>
+  <Step title="Register an endpoint">
+    Create one with [`POST /v1/webhooks`](/api-reference/webhooks/create-a-webhook-endpoint), or from **Settings → Webhooks** in the console.
+  </Step>
+  <Step title="Choose events">
+    Pass `subscribed_events`, or omit it to receive [every event](/webhooks/events). Prefer an explicit list.
+  </Step>
+  <Step title="Receive POSTs">
+    LazyApp sends a `POST` whenever a subscribed event occurs. The body is the envelope below; headers carry signature, event type, and delivery id.
+  </Step>
+  <Step title="Return 2xx">
+    Respond `2xx` after you have accepted the payload. Default timeout is 10 seconds (configurable 1–30 per endpoint).
+  </Step>
+  <Step title="Validate">
+    Use [`POST /v1/webhooks/{webhook}/test`](/api-reference/webhooks/send-a-test-webhook-delivery) and [`GET /v1/webhooks/deliveries`](/api-reference/webhooks/list-webhook-deliveries) to confirm your integration.
+  </Step>
+</Steps>
 
 ```bash
 curl https://lazyapp.in/v1/webhooks \
   -H "Authorization: Bearer $LAZYAPP_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://example.com/webhooks/lazyapp",
+    "url": "https://yourapp.example/webhooks/lazyapp",
     "description": "Order service",
     "subscribed_events": ["message.delivered", "message.failed"],
     "timeout_seconds": 10
@@ -21,13 +47,11 @@ curl https://lazyapp.in/v1/webhooks \
 
 The response includes a signing `secret`, shown once. Store it — you need it to [verify deliveries](/webhooks/verifying).
 
-Omit `subscribed_events` to receive [every event](/webhooks/events). Prefer subscribing to what you actually handle: it is less traffic and a clearer contract.
-
 You can register several endpoints and restrict each to specific phone numbers.
 
 ## Payload
 
-Every delivery has the same envelope:
+Every delivery uses the same envelope:
 
 ```json
 {
@@ -40,6 +64,7 @@ Every delivery has the same envelope:
       "status": "delivered",
       "to": "+919812345670",
       "provider_message_id": "wamid.HBgMOTE5ODEyMzQ1Njcw",
+      "request_id": "req_…",
       "metadata": { "order_id": "1042" },
       "created_at": "2026-08-19T11:41:59+00:00"
     }
@@ -47,13 +72,13 @@ Every delivery has the same envelope:
 }
 ```
 
-`data` is keyed by object type — `message`, `contact`, `template`, `call` — so a single handler can switch on `type` and read the right key.
+`data` is keyed by object type — `message`, `contact`, `template`, `call`, and so on — so a handler can switch on `type` and read the right key.
 
-Any `metadata` you attached when sending comes back here, which usually removes the need for a lookup.
+Any `metadata` you attached when sending, and the originating API `request_id`, come back on message events.
 
 ### Platform deliveries
 
-If you are a platform, events from a customer's workspace are also delivered to *your* endpoints. Those copies include a `customer` envelope so you can route without an endpoint per tenant:
+If you are a platform, events from a customer's workspace are also delivered to *your* endpoints. Those copies include a `customer` envelope:
 
 ```json
 {
@@ -82,58 +107,104 @@ Route on `customer.external_id` (your own id). The customer's own endpoint does 
 | `X-LazyApp-Delivery` | The event id, for deduplication |
 | `X-LazyApp-Api-Version` | The payload version for this endpoint |
 
-## Delivery guarantees
+## Delivery retries
 
-**At-least-once.** LazyApp will rather send twice than lose one, so your handler must be idempotent. Deduplicate on `id` — it is stable across retries.
+A delivery succeeds when your endpoint returns a `2xx` within the endpoint's timeout (default **10 seconds**, range 1–30). Any other outcome — non-`2xx`, timeout, or connection error — is retried.
+
+Default `max_attempts` is **3** (configurable 1–8). Backoff between attempts, measured from when the previous attempt finished:
+
+| Attempt | Delay before this attempt | Notes |
+| --- | --- | --- |
+| 1 | immediate | First try |
+| 2 | 10s | |
+| 3 | 1m | Default `max_attempts` stops here |
+| 4 | 5m | Only if `max_attempts` ≥ 4 |
+| 5 | 15m | |
+| 6 | 30m | |
+| 7 | 1h | |
+| 8 | 2h | Job ceiling |
+
+After the last attempt fails, the delivery is kept as a dead letter — it is not retried automatically. Inspect failures with [`GET /v1/webhooks/deliveries`](/api-reference/webhooks/list-webhook-deliveries) (`attempt` is which try produced the log).
+
+After **5 consecutive failures**, LazyApp auto-pauses the endpoint so a dead receiver does not accumulate an unbounded backlog. Resume with [`POST /v1/webhooks/{webhook}/resume`](/api-reference/webhooks/resume-a-paused-webhook-endpoint). You can also pause or remove endpoints yourself from settings.
+
+<Tip>
+  **Keep your handler fast.** Persist the event, return `2xx`, then process on a worker. A slow handler risks the timeout and an unnecessary retry.
+</Tip>
 
 Deliveries go through a transactional outbox: the event is committed with the state change that caused it, then delivered. A crash mid-request cannot lose an event that your data already reflects.
 
-## Retries and failure
+## Idempotency
 
-<Steps>
-  <Step title="Respond 2xx quickly">
-    Acknowledge, then process asynchronously. The default timeout is 10 seconds
-    (configurable 1–30). A slow handler is treated as a failure.
-  </Step>
-  <Step title="Retries with backoff">
-    Non-2xx or timeout is retried with exponential backoff up to `max_attempts`.
-  </Step>
-  <Step title="Auto-pause">
-    Repeated consecutive failures pause the endpoint, so a dead receiver does not
-    accumulate an unbounded backlog. `paused_at`, `consecutive_failures` and
-    `pause_reason` show this — `pause_reason` tells you whether LazyApp paused it
-    or you did.
-  </Step>
-  <Step title="Resume and rotate">
-    Once your endpoint is healthy again, resume deliveries with
-    [`POST /v1/webhooks/{webhook}/resume`](/api-reference/webhooks/resume-a-paused-webhook-endpoint).
-    If you lost the signing secret, rotate it with
-    [`POST /v1/webhooks/{webhook}/rotate-secret`](/api-reference/webhooks/rotate-a-webhook-signing-secret)
-    instead of deleting and re-registering the endpoint.
-  </Step>
-  <Step title="Dead-letter and replay">
-    Exhausted deliveries are kept, not discarded. Inspect them with
-    [`GET /v1/webhooks/deliveries`](/api-reference/webhooks/list-webhook-deliveries) and
-    replay from the console once your endpoint is healthy.
-  </Step>
-</Steps>
+Webhook deliveries use **at-least-once** semantics: the same event may arrive more than once if a previous response was lost or your endpoint took too long to acknowledge. Your handler must be idempotent.
 
-<Tip>
-  Replays are signed with your *current* secret by default, so rotating a secret does not
-  break a replay. A byte-identical replay with the original signature is also available
-  when you need to reproduce exactly what you first received.
-</Tip>
+Every payload carries a stable event identifier that is also a header:
+
+- `id` in the body — canonical event ID (`evt_…`)
+- `X-LazyApp-Delivery` — the same value
+
+Use that identifier as your deduplication key. A typical pattern is to insert it into a unique-indexed table or cache before processing, and skip when the insert conflicts.
+
+## Signature verification
+
+Every delivery includes `X-LazyApp-Signature`: lowercase hex HMAC-SHA256 of the **raw request body**, prefixed with `sha256=`, keyed by your endpoint secret.
+
+See [Verifying webhooks](/webhooks/verifying) for Node, Python, and PHP examples. Reject unsigned or mismatched requests — do not process the payload.
+
+If you lost the secret, rotate it with [`POST /v1/webhooks/{webhook}/rotate-secret`](/api-reference/webhooks/rotate-a-webhook-signing-secret) instead of deleting the endpoint.
 
 ## Custom headers
 
-Add up to 20 static headers, for a shared token or a routing hint your gateway needs:
+Add up to 20 static headers for a shared token or routing hint:
 
 ```json
 { "custom_headers": { "X-Tenant": "acme" } }
 ```
 
-These are additional to signature verification, not a replacement for it.
+These are additional to signature verification, not a replacement. Reserved `X-LazyApp-*` names cannot be overridden.
 
 ## Ordering
 
-Webhooks are not ordered. A `message.read` can arrive before the `message.delivered` for the same message. Treat status as a set you converge on, using `created_at`, rather than a sequence.
+Webhooks are not ordered. A `message.read` can arrive before `message.delivered` for the same message. Treat status as a set you converge on, using timestamps, rather than a sequence.
+
+## Available events
+
+Events are grouped by area. The [event reference](/webhooks/events) lists every type and when it fires.
+
+<CardGroup cols={2}>
+  <Card title="Messages" href="/webhooks/events#messages" icon="message">
+    Received, queued, sent, delivered, read, played, failed
+  </Card>
+  <Card title="Templates" href="/webhooks/events#templates" icon="file-lines">
+    Pending, approved, rejected, paused, disabled, category changes
+  </Card>
+  <Card title="Contacts" href="/webhooks/events#contacts" icon="user">
+    Profile updates, opt-in and opt-out
+  </Card>
+  <Card title="Numbers and connections" href="/webhooks/events#numbers-and-connections" icon="phone">
+    Quality rating, connection lifecycle
+  </Card>
+  <Card title="Flows and workflows" href="/webhooks/events#flows" icon="diagram-project">
+    Flow publish status, automation runs
+  </Card>
+  <Card title="Platform" href="/webhooks/events#platform" icon="building">
+    Customer workspace lifecycle for resellers
+  </Card>
+</CardGroup>
+
+## Testing
+
+`POST /v1/webhooks/{webhook}/test` queues a signed delivery with `"test": true` and an `evt_test_…` id. It is stamped with the event type you pass (default `message.sent`) so you can exercise routing, but it is **not** a real message — ignore it in production handlers.
+
+```bash
+curl -X POST https://lazyapp.in/v1/webhooks/$WEBHOOK_ID/test \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"event": "message.delivered"}'
+```
+
+You can also send a test from **Settings → Webhooks** in the console.
+
+## Replays
+
+Exhausted deliveries are kept. Replay from the console once your endpoint is healthy. Replays are signed with your *current* secret by default, so rotating a secret does not break a replay. A byte-identical replay with the original signature is also available when you need to reproduce exactly what you first received.
