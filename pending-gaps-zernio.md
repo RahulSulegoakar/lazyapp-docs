@@ -45,8 +45,8 @@ Last reviewed: 2026-09-01
 | WhatsApp hub | `guides/whatsapp.mdx` | Done |
 | Connection & setup | `guides/connecting-whatsapp.mdx` | Done |
 | Broadcasts | `sending/broadcasts.mdx` | Done |
-| Templates | `sending/templates.mdx` | In progress (this pass) |
-| Contacts & profile | `guides/contacts.mdx` | In progress (this pass) |
+| Templates | `sending/templates.mdx` | Done |
+| Contacts & profile | `guides/contacts.mdx` | Done |
 | Phone numbers / purchase / KYC | — | Skip (not our model) |
 | Calling | — | When capability GA |
 | Group chats | — | When capability GA |
