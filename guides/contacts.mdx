@@ -85,40 +85,93 @@ curl -X POST https://lazyapp.in/v1/contacts/{target_uuid}/merge \
 
 Messages and attributes consolidate onto the target contact.
 
-## Business profile
+## Bulk import
 
-LazyApp does not expose `GET /v1/whatsapp/business-profile`. Use the **Meta-compatible proxy** (same as [Cloud API migration](/migrating/from-cloud-api)):
+Upsert up to **1000** contacts in one request:
 
 ```bash
-# Read
-curl "https://lazyapp.in/meta/whatsapp/v21.0/{phone_number_id}/whatsapp_business_profile" \
+curl -X POST https://lazyapp.in/v1/contacts/bulk \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "contacts": [
+      { "phone_number": "+919811111111", "attributes": { "first_name": "Ada" } },
+      { "phone_number": "+919822222222", "email": "bob@acme.example" }
+    ]
+  }'
+```
+
+Response: `{ "created", "updated", "failed": [{ "index", "message" }] }`.
+
+## Tags
+
+Structured membership (keep free-form CRM fields in `attributes`):
+
+```bash
+curl -X POST https://lazyapp.in/v1/tags \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "vip", "color": "#111111" }'
+
+curl -X POST https://lazyapp.in/v1/contacts/{uuid}/tags \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "tags": ["vip", "newsletter"] }'
+```
+
+`DELETE /v1/contacts/{uuid}/tags` detaches by tag uuid or name. `GET /v1/tags` lists tags.
+
+## Segments
+
+```bash
+curl -X POST https://lazyapp.in/v1/contact-segments \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "VIP buyers",
+    "filters": { "attribute": { "key": "tier", "equals": "vip" } }
+  }'
+```
+
+Filters match the console: `tags`, `attribute`, `consent_status`, `suppressed`. Use the segment `uuid` as `contact_segment_uuid` on [broadcasts](/sending/broadcasts).
+
+## Business profile
+
+Prefer native routes on a connection uuid (also available via the [Meta-compatible proxy](/migrating/from-cloud-api)):
+
+```bash
+curl https://lazyapp.in/v1/connections/{connection_uuid}/business-profile \
   -H "Authorization: Bearer $LAZYAPP_API_KEY"
 
-# Update
-curl -X POST "https://lazyapp.in/meta/whatsapp/v21.0/{phone_number_id}/whatsapp_business_profile" \
+curl -X PATCH https://lazyapp.in/v1/connections/{connection_uuid}/business-profile \
   -H "Authorization: Bearer $LAZYAPP_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "about": "Your go-to store for widgets",
-    "description": "We sell the best widgets in town.",
     "email": "hello@acme.example",
     "websites": ["https://acme.example"]
   }'
 ```
 
-Replace `{phone_number_id}` with your connection's Meta phone number id. The key must be allowed to use that number. You can also edit profile fields in the LazyApp console under **Connections**.
+## Block users
 
-Cached profile fields sync back onto the connection after update.
+Requires the `block_users` capability on the connection:
+
+```bash
+curl -X POST https://lazyapp.in/v1/connections/{connection_uuid}/block-users \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "phone_numbers": ["+919812345670"] }'
+```
+
+`DELETE` with the same body unblocks.
 
 ## What we skip (Zernio-style)
 
 | Zernio | LazyApp |
 | --- | --- |
 | `profileId` + `accountId` + `platformIdentifier` | Workspace scoped; `phone_number` or `bsuid` |
-| `POST /v1/contacts/bulk` (1,000 rows) | Upsert one at a time or import in console |
-| `tags` on API create | Use `attributes` or tag in console |
 | `isSubscribed` boolean | Explicit `consent` + `suppress` endpoints |
-| Native `/v1/whatsapp/business-profile` | Meta proxy under `/meta/whatsapp/...` |
 
 ## Related
 

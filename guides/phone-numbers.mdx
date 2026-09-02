@@ -54,12 +54,19 @@ Subscribe to connection and number events instead of polling:
 
 See [Event reference](/webhooks/events). For platform customers, deliveries include the `customer` envelope.
 
-### Console: live Meta insights
+### Live Meta insights
 
-The **Connections** page loads a live read from Meta (quality, verified name, throughput, WABA review status, business profile fields). That depth is **console-only** today — there is no public `number-info` endpoint.
+[`GET /v1/connections/{connection_uuid}/insights`](/api-reference/connections/connection-insights) loads a live Meta read (quality, verified name, throughput, WABA review status, business profile fields). Responses are cached for about five minutes. Scope `messages:read`.
+
+```bash
+curl https://lazyapp.in/v1/connections/{connection_uuid}/insights \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+The **Connections** console page uses the same underlying fetch.
 
 <Warning>
-Do not treat `GET /v1/capabilities` alone as a liveness probe after a coexistence disconnect. Prefer `connection.disconnected` and, when in doubt, check the console or attempt a send. A live Meta number read API is on the [product backlog](/pending-gaps-zernio).
+Do not treat `GET /v1/capabilities` alone as a liveness probe after a coexistence disconnect. Prefer `connection.disconnected` and, when in doubt, call insights or attempt a send.
 </Warning>
 
 ## Verification and registration

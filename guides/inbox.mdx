@@ -22,20 +22,21 @@ Unlike Zernio's conversation-centric inbox (`POST /v1/inbox/conversations/.../me
 | React with emoji | Yes — `type: reaction` on [`POST /v1/messages`](/sending/messages#types) |
 | Commerce (product, catalog, carousel) | Yes — [Catalog](/sending/catalog); session messages only |
 | Location & contact cards | Yes — message `type` `location` / `contacts` |
-| Typing indicator | **Console only** — not on the public `/v1` API |
-| Archive / pin / mute thread | **Console only** — per-user thread state, not `/v1` |
-| Voice notes (`voice: true` / `voiceNote`) | **Console** (and Meta-compat proxy); not a field on public `POST /v1/messages` today |
+| Typing indicator | Yes — [`POST /v1/conversations/{id}/typing`](/guides/inbox#typing) |
+| Archive / pin thread | Yes — workspace-level [`PATCH /v1/conversations/{id}`](/guides/inbox#archive-and-pin) (`archived` / `pinned`). Distinct from per-agent console pins |
+| Voice notes (`voice: true`) | Yes — `type: audio` with `voice: true` on [`POST /v1/messages`](/sending/messages#types) |
 | Delete outbound message via API | **Not built** — `message.deleted` covers coexistence revokes from the phone app |
 | Create conversation then post into it | **Skip** — send to the recipient; LazyApp attaches the conversation |
+| Search conversations | Yes — `q` on [`GET /v1/conversations`](/guides/inbox#list-conversations) |
 
 ## Direct messages
 
 ### List conversations
 
-Most recently active first. Filter with `status` (`open`, `pending`, `resolved`, `closed`) or `assignee_id`. Cursor-paginated (`limit` 1–100, default 25).
+Most recently active first. Pinned threads sort first. Filter with `status` (`open`, `pending`, `resolved`, `closed`), `assignee_id`, or `archived`. Search with `q` (contact phone / username / BSUID / external id, or latest message body). Cursor-paginated (`limit` 1–100, default 25).
 
 ```bash
-curl "https://lazyapp.in/v1/conversations?limit=50&status=open" \
+curl "https://lazyapp.in/v1/conversations?limit=50&status=open&q=9812" \
   -H "Authorization: Bearer $LAZYAPP_API_KEY"
 ```
 
@@ -45,6 +46,8 @@ curl "https://lazyapp.in/v1/conversations?limit=50&status=open" \
     {
       "id": "cnv_…",
       "status": "open",
+      "archived": false,
+      "pinned": true,
       "contact": {
         "uuid": "…",
         "phone_number": "+919812345670",
@@ -58,6 +61,26 @@ curl "https://lazyapp.in/v1/conversations?limit=50&status=open" \
   ],
   "next_cursor": "eyJpZCI6MTIzfQ"
 }
+```
+
+### Typing
+
+Shows Meta's typing indicator for the latest inbound message in the thread.
+
+```bash
+curl -X POST https://lazyapp.in/v1/conversations/{id}/typing \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+### Archive and pin
+
+Workspace-level flags (API key has no user). Console per-agent pins stay separate.
+
+```bash
+curl -X PATCH https://lazyapp.in/v1/conversations/{id} \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"archived": true, "pinned": true}'
 ```
 
 **Required scope:** `messages:read`

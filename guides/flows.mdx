@@ -38,8 +38,9 @@ curl https://lazyapp.in/v1/capabilities \
 | [`GET /v1/flows/{flow}/endpoint-health`](/api-reference/flows/check-flow-endpoint-health) | Probe your data endpoint |
 | [`GET /v1/flows/{flow}/responses`](/api-reference/flows/list-flow-responses) | Completion payloads |
 | Send Flow | [`POST /v1/messages`](/sending/messages) with `interactive.type: flow` |
-| Starter templates / duplicate | **Console only** today |
-| Update published Flow JSON in place | **Not allowed** — clone in console, then publish |
+| [`GET /v1/flows/starters`](/guides/flows#starters) / `POST` | List and materialise starter drafts |
+| [`POST /v1/flows/{flow}/duplicate`](/guides/flows#duplicate) | Clone into a new draft |
+| Update published Flow JSON in place | **Not allowed** — duplicate, then publish |
 | Managed / hosted data-endpoint encryption | **Not built** — you host `data_endpoint_uri` |
 | Zernio `POST /v1/whatsapp/flows/send` | Use messages interactive instead |
 
@@ -49,7 +50,28 @@ curl https://lazyapp.in/v1/capabilities \
 draft → publish → published (or throttled) → deprecate → deprecated
 ```
 
-Meta may also mark a flow `blocked` or `throttled`. Only **`published`** and **`throttled`** are sendable. Published flows cannot be edited in place — create a new draft (console **Duplicate**) with a higher version.
+Meta may also mark a flow `blocked` or `throttled`. Only **`published`** and **`throttled`** are sendable. Published flows cannot be edited in place — [duplicate](#duplicate) into a new draft, then publish.
+
+## Starters
+
+```bash
+curl https://lazyapp.in/v1/flows/starters \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+
+curl -X POST https://lazyapp.in/v1/flows/starters \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "starter": "lead_capture", "name": "Lead capture" }'
+```
+
+## Duplicate
+
+```bash
+curl -X POST https://lazyapp.in/v1/flows/{uuid}/duplicate \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "Lead capture (copy)" }'
+```
 
 ## Create a flow
 

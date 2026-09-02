@@ -42,6 +42,26 @@ Marketing copy on [lazyapp.in/pricing](https://lazyapp.in/pricing) shows **indic
 
 For the full country matrix Meta publishes, see [Meta WhatsApp pricing](https://developers.facebook.com/docs/whatsapp/pricing). LazyApp's ledger stores USD region rates for DEFAULT, INDIA, NORTH_AMERICA, BRAZIL, and more as configured for your deployment — check **Usage** in the console for what your workspace actually charged.
 
+## Rate table API
+
+```bash
+curl "https://lazyapp.in/v1/pricing/rates?category=marketing&region=IN" \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+Scope `billing:read`. Filter with `category` and `region`. Cursor-paginated.
+
+## Messaging analytics
+
+Thin workspace aggregates (counts by status / category / direction for the last N days, max 90):
+
+```bash
+curl "https://lazyapp.in/v1/analytics/messaging?days=7" \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+Scope `messages:read`. Not a social-analytics clone.
+
 ## Regions
 
 Recipient country is inferred from the E.164 dialling prefix (longest match). Unknown prefixes fall back to `DEFAULT`. Examples of configured prefixes include `91` → INDIA, `1` → NORTH_AMERICA, `55` → BRAZIL — see `config/pricing.php` in the application for the full map.

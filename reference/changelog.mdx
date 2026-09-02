@@ -3,6 +3,12 @@ title: "Changelog"
 description: "What shipped, newest first."
 ---
 
+<Update label="2026-09-02" description="v1">
+
+**Wave 3 API gaps.** Voice notes (`voice` on audio messages), conversation search / typing / workspace archive-pin, flow starters + duplicate, connection block-users / business-profile / insights, broadcast per-recipient `variable_map` + append recipients, contact segments / tags / bulk import, `GET /v1/pricing/rates`, and `GET /v1/analytics/messaging`.
+
+</Update>
+
 <Update label="2026-09-01" description="v1">
 
 **Retrieve a message.** `GET /v1/messages/{uuid}` returns LazyApp's local message record (status, timestamps, body, metadata). Scope `messages:read`. Prefer webhooks in production; this is for confirmation and debugging.

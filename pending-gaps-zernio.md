@@ -7,7 +7,7 @@ description: "Internal tracker of product and documentation gaps compared to Zer
 
 Internal tracker for LazyApp vs [Zernio WhatsApp API](https://docs.zernio.com). **Code wins** — update this file when we ship or explicitly decline something.
 
-Last reviewed: 2026-09-02 (Flows guide + OpenAPI path matrix)
+Last reviewed: 2026-09-02 (Wave 3 API gaps shipped)
 
 <Note>
 This page is for the LazyApp team and implementers comparing surfaces to Zernio. Customer-facing docs link here only where we explicitly document a skip.
@@ -17,7 +17,7 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 
 **What it is:** Zernio’s full public API contract (OpenAPI 3.1, version **1.0.4**, base `https://zernio.com/api/v1`). ~**418** path entries — mostly **multi-network** (IG, X, TikTok, ads, analytics, posting queue), not WhatsApp-only. Also published for RapidAPI (`x-documentation`, `x-badges`).
 
-**Use it for:** machine-readable diff of path names, request shapes, and WhatsApp-specific routes under `/v1/whatsapp/*` and `/v1/inbox/*`. Do **not** treat it as LazyApp’s contract — confirm everything in `lazyapp/routes/v1.php` and `docs/api-contract.json` (~**92** operations).
+**Use it for:** machine-readable diff of path names, request shapes, and WhatsApp-specific routes under `/v1/whatsapp/*` and `/v1/inbox/*`. Do **not** treat it as LazyApp’s contract — confirm everything in `lazyapp/routes/v1.php` and `docs/api-contract.json` (~**115** operations after Wave 3).
 
 ### Path-by-path (WhatsApp-relevant)
 
@@ -25,22 +25,21 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 | --- | --- | --- |
 | `POST /v1/inbox/conversations…/messages` | `POST /v1/messages` | Keep LazyApp model |
 | `GET /v1/inbox/conversations`, `…/messages` | `GET /v1/conversations`, `…/messages` | Covered |
-| `…/typing`, `…/read`, `…/reactions`, `DELETE …/messages/{id}`, search | Console typing/archive; reactions via `POST /v1/messages`; no public delete/search | Gap / skip |
-| `/v1/broadcasts` + `/send` + `/recipients` + `/schedule` | `POST /v1/broadcasts` + `start`; `schedule_at` on create | Keep single-call; gaps: per-recipient vars, add recipients |
+| `…/typing`, archive/pin, search | `/v1/conversations` typing, PATCH flags, `q` | Covered (workspace flags, not per-agent) |
+| Reactions | `POST /v1/messages` `type: reaction` | Covered |
+| `DELETE …/messages/{id}` | — | Skip (Cloud API has no general delete) |
+| `/v1/broadcasts` + recipients + schedule | `POST /v1/broadcasts` + `start` + `…/recipients` + per-recipient vars | Covered (single-call create kept) |
 | `/v1/whatsapp/templates`, `template-library` | `/v1/templates` + Meta-compat | Gap: library API |
-| `/v1/whatsapp/flows/*`, `flows/send`, `flow-responses` | `/v1/flows/*` + interactive send + responses | Covered (no hosted endpoint) |
-| `/v1/whatsapp/wa-groups/*` + participants/invite/join | `/v1/groups` create/list/show + `group_id` send | Partial |
-| `/v1/whatsapp/calls*`, recording, estimate, permissions, `/v1/voice/*` | `GET/POST /v1/calls` permission + history | Partial — no bridge |
-| `/v1/whatsapp/phone-numbers/purchase`, KYC, countries, available | Embedded Signup / BYO | Out of scope |
-| `/v1/whatsapp/sandbox/sessions` | Test mode + console claim | Out of scope |
-| `/v1/whatsapp/number-info`, `account-events`, `block-users` | Capabilities + webhooks; block via Meta-compat | Partial |
-| `/v1/whatsapp/business-profile/*` | Meta-compat profile proxy | Partial |
-| `/v1/ads/ctwa`, `/v1/whatsapp/dataset`, `/conversions` | Not built (referral on webhook) | Gap / skip until demand |
-| `/v1/contacts`, `/contacts/bulk`, channels/fields | `/v1/contacts` upsert/consent/merge | Gaps: bulk, tags/segments API |
-| `/v1/sequences/*` | Workflows + `send_at` | Out of scope |
-| `/v1/verify/verifications` | `/v1/otp`, `/v1/otp/verify` | Covered (different shape) |
-| `/v1/connect/whatsapp/*` | Console ES + setup links | Out of scope (no headless credentials API) |
-| `/v1/whatsapp/media/{id}` | `/v1/media`, inbound `GET /v1/messages/{uuid}/media` | Covered |
+| `/v1/whatsapp/flows/*` | `/v1/flows/*` + starters + duplicate | Covered (no hosted endpoint) |
+| `/v1/whatsapp/wa-groups/*` + participants/invite/join | `/v1/groups` create/list/show + `group_id` send | Partial — skip GA-gated participant APIs |
+| `/v1/whatsapp/calls*` | `GET/POST /v1/calls` | Partial — no bridge |
+| Number shop / KYC / sandbox sessions | BYO + console claim | Out of scope |
+| `block-users`, business-profile, number-info | `/v1/connections/{uuid}/…` | Covered |
+| CTWA / dataset / conversions | — | Skip |
+| Contacts bulk / tags / segments | `/v1/contacts/bulk`, `/v1/tags`, `/v1/contact-segments` | Covered |
+| Sequences | Workflows + `send_at` | Out of scope |
+| Verify | `/v1/otp` | Covered |
+| Analytics / rates | `/v1/analytics/messaging`, `/v1/pricing/rates` | Covered (thin) |
 
 **LazyApp-only:** `/v1/events`, automation packs, `/v1/capabilities`, Meta-compat `/meta/whatsapp/...`, platform customers / setup links / embed tokens, contact suppress/consent/merge, wallet `402`, idempotency on writes.
 
@@ -48,28 +47,13 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 
 | Gap | Zernio | LazyApp today | Notes |
 | --- | --- | --- | --- |
-| Broadcast per-recipient vars | `variableMapping` from contact fields | Static `variable_map` only | Highest broadcast DX gap; keep single-call create |
-| Contact segments API | Create/filter segments via API | Console-only; API accepts `contact_segment_id` | Needed for programmatic campaigns |
-| Add broadcast recipients after create | `POST …/recipients` | Audience fixed on `POST /v1/broadcasts` | Lower priority if per-recipient vars land |
-| Meta Template Library via API | `library_template_name` + lookup | Console link to Meta; standard submit flow | Faster onboarding |
-| Contact bulk import API | `POST /v1/contacts/bulk` (1k) | Loop `POST /v1/contacts` or console | |
-| Contact tags via API | Tags on create/update | Tags in console; `attributes` JSON on API | |
-| Groups participant / invite / join APIs | Add/remove participants, invite link, join requests | Create, list, show, group send only | `groups` + `messages.group` gated; non-coexistence |
-| Calling docs + UX | Calling API page | Permission request + webhook history; no PSTN/SIP bridge | `guides/calling.mdx` documents today; Zernio bridge backlog |
-| Outbound dial + forwardTo API | Live dial + tel/sip/wss | `business_initiated` stub only | Full CPaaS bridge |
-| Block users native `/v1` | Dedicated route | Meta-compat proxy only | |
+| Meta Template Library via API | `library_template_name` + lookup | Console link to Meta; standard submit flow | Lower ROI than Wave 3 DX |
+| Groups participant / invite / join APIs | Add/remove participants, invite link, join requests | Create, list, show, group send only | Capability-gated GA |
+| Outbound dial + forwardTo / recording | Live dial + tel/sip/wss | Permission + history stub | CPaaS bridge |
 | CTWA conversions | Attribution + CAPI | Not built | Ads-heavy customers |
-| Public country rate API | — | Rates in workspace DB | Platform billing dashboards |
-| Live number-info / health API | `GET /v1/whatsapp/number-info`, account health | Cached fields on `GET /v1/capabilities`; live read console-only | Liveness after coexistence disconnect |
-| Analytics API | Listed as No on Zernio hub | Console usage only | Low priority |
-| Hosted Flow data endpoints | Managed encryption | Customer hosts `data_endpoint_uri` | Documented in `guides/flows.mdx` |
-| Flow starters / duplicate via API | — | Console only | Low priority |
-| Public typing indicator API | Inbox typing endpoint | Console session only | Low priority if embeds cover UX |
-| Public archive / pin thread API | Archive on inbox conversations | Console per-user thread state | |
-| Voice note flag on `POST /v1/messages` | `voiceNote: true` | Console + Meta-compat `audio.voice`; not on V1 JSON | |
-| Delete outbound message via API | `DELETE …/messages/{id}` | Coexistence revoke → `message.deleted` only | |
-| Inbox conversation search API | `GET /v1/inbox/conversations/search` | Filter `status` / `assignee_id` on list only | |
-| Dedicated business-profile routes | `/v1/whatsapp/business-profile/*` | Meta-compat `whatsapp_business_profile` proxy | |
+| Hosted Flow data endpoints | Managed encryption | Customer hosts `data_endpoint_uri` | Large infra product |
+| Delete outbound message via API | `DELETE …/messages/{id}` | Coexistence revoke → `message.deleted` only | Meta limitation |
+| Per-agent inbox pins via API | User-scoped archive | Workspace-level `archived`/`pinned` on conversations | API keys have no user |
 
 ## Intentionally out of scope
 

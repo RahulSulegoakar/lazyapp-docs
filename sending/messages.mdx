@@ -93,6 +93,8 @@ Or by business-scoped user id, when Meta gave you one instead of a number:
     | `media_url` | LazyApp should fetch a public URL and upload it for you |
 
     `filename` is worth setting for documents — it is what the recipient sees.
+
+    For a **voice note**, send `type: audio` with `"voice": true` (and no caption — Meta rejects captions on audio).
   </Tab>
 
   <Tab title="Location">
