@@ -7,7 +7,7 @@ description: "Internal tracker of product and documentation gaps compared to Zer
 
 Internal tracker for LazyApp vs [Zernio WhatsApp API](https://docs.zernio.com). **Code wins** — update this file when we ship or explicitly decline something.
 
-Last reviewed: 2026-09-02 (incl. Zernio OpenAPI v1.0.4 audit)
+Last reviewed: 2026-09-02 (Flows guide + OpenAPI path matrix)
 
 <Note>
 This page is for the LazyApp team and implementers comparing surfaces to Zernio. Customer-facing docs link here only where we explicitly document a skip.
@@ -19,25 +19,30 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 
 **Use it for:** machine-readable diff of path names, request shapes, and WhatsApp-specific routes under `/v1/whatsapp/*` and `/v1/inbox/*`. Do **not** treat it as LazyApp’s contract — confirm everything in `lazyapp/routes/v1.php` and `docs/api-contract.json` (~**92** operations).
 
-### WhatsApp-relevant Zernio paths (audit summary)
+### Path-by-path (WhatsApp-relevant)
 
-| Area | Zernio (representative) | LazyApp |
+| Zernio path(s) | LazyApp | Verdict |
 | --- | --- | --- |
-| Send | `POST /v1/inbox/conversations/{id}/messages` | `POST /v1/messages` (+ `meta/.../messages` proxy) |
-| Inbox read | `GET /v1/inbox/conversations`, search, typing, read receipts | `GET /v1/conversations`, `…/messages` — no public search/typing/archive |
-| Broadcasts | Create → upload CSV → send → add recipients | Single `POST /v1/broadcasts` + `start` |
-| Templates | `/v1/whatsapp/templates`, template-library | `/v1/templates` + Meta-compat templates |
-| Flows | `/v1/whatsapp/flows/*`, `flows/send` | `/v1/flows/*` (similar surface) |
-| Groups | `/v1/whatsapp/wa-groups/*` + participants/join | `/v1/groups` only (partial) |
-| Calling | Bridge + recording + estimate + permissions API | Permission request + history; no PSTN bridge |
-| Numbers | purchase, KYC, countries, sandbox sessions | Embedded Signup + test sandbox claim |
-| CTWA | `/v1/ads/ctwa`, `/v1/whatsapp/dataset`, `/v1/whatsapp/conversions` | Not built |
-| Contacts | `/v1/contacts/bulk`, custom fields/channels | Upsert + consent; no bulk API |
-| Sequences | `/v1/sequences/*` | Workflows + scheduled messages (no sequences product) |
-| Verify | `/v1/verify/verifications` | `/v1/otp` + `/v1/otp/verify` |
-| Platform | Profiles + accounts + `accountId` on every call | Workspace from API key; `/v1/platform/customers` for resellers |
+| `POST /v1/inbox/conversations…/messages` | `POST /v1/messages` | Keep LazyApp model |
+| `GET /v1/inbox/conversations`, `…/messages` | `GET /v1/conversations`, `…/messages` | Covered |
+| `…/typing`, `…/read`, `…/reactions`, `DELETE …/messages/{id}`, search | Console typing/archive; reactions via `POST /v1/messages`; no public delete/search | Gap / skip |
+| `/v1/broadcasts` + `/send` + `/recipients` + `/schedule` | `POST /v1/broadcasts` + `start`; `schedule_at` on create | Keep single-call; gaps: per-recipient vars, add recipients |
+| `/v1/whatsapp/templates`, `template-library` | `/v1/templates` + Meta-compat | Gap: library API |
+| `/v1/whatsapp/flows/*`, `flows/send`, `flow-responses` | `/v1/flows/*` + interactive send + responses | Covered (no hosted endpoint) |
+| `/v1/whatsapp/wa-groups/*` + participants/invite/join | `/v1/groups` create/list/show + `group_id` send | Partial |
+| `/v1/whatsapp/calls*`, recording, estimate, permissions, `/v1/voice/*` | `GET/POST /v1/calls` permission + history | Partial — no bridge |
+| `/v1/whatsapp/phone-numbers/purchase`, KYC, countries, available | Embedded Signup / BYO | Out of scope |
+| `/v1/whatsapp/sandbox/sessions` | Test mode + console claim | Out of scope |
+| `/v1/whatsapp/number-info`, `account-events`, `block-users` | Capabilities + webhooks; block via Meta-compat | Partial |
+| `/v1/whatsapp/business-profile/*` | Meta-compat profile proxy | Partial |
+| `/v1/ads/ctwa`, `/v1/whatsapp/dataset`, `/conversions` | Not built (referral on webhook) | Gap / skip until demand |
+| `/v1/contacts`, `/contacts/bulk`, channels/fields | `/v1/contacts` upsert/consent/merge | Gaps: bulk, tags/segments API |
+| `/v1/sequences/*` | Workflows + `send_at` | Out of scope |
+| `/v1/verify/verifications` | `/v1/otp`, `/v1/otp/verify` | Covered (different shape) |
+| `/v1/connect/whatsapp/*` | Console ES + setup links | Out of scope (no headless credentials API) |
+| `/v1/whatsapp/media/{id}` | `/v1/media`, inbound `GET /v1/messages/{uuid}/media` | Covered |
 
-**LazyApp-only (no Zernio equivalent in WhatsApp scope):** `/v1/events`, automation packs, `/v1/otp`, contact merge/suppress/consent, `/v1/capabilities`, Meta-compat proxy, platform setup links + embed tokens, usage ledger / wallet `402`, idempotency on all writes.
+**LazyApp-only:** `/v1/events`, automation packs, `/v1/capabilities`, Meta-compat `/meta/whatsapp/...`, platform customers / setup links / embed tokens, contact suppress/consent/merge, wallet `402`, idempotency on writes.
 
 ## Product — build later
 
@@ -57,7 +62,8 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 | Public country rate API | — | Rates in workspace DB | Platform billing dashboards |
 | Live number-info / health API | `GET /v1/whatsapp/number-info`, account health | Cached fields on `GET /v1/capabilities`; live read console-only | Liveness after coexistence disconnect |
 | Analytics API | Listed as No on Zernio hub | Console usage only | Low priority |
-| Hosted Flow data endpoints | Managed encryption | Customer hosts `data_endpoint_uri` | Documented; no managed hosting |
+| Hosted Flow data endpoints | Managed encryption | Customer hosts `data_endpoint_uri` | Documented in `guides/flows.mdx` |
+| Flow starters / duplicate via API | — | Console only | Low priority |
 | Public typing indicator API | Inbox typing endpoint | Console session only | Low priority if embeds cover UX |
 | Public archive / pin thread API | Archive on inbox conversations | Console per-user thread state | |
 | Voice note flag on `POST /v1/messages` | `voiceNote: true` | Console + Meta-compat `audio.voice`; not on V1 JSON | |
@@ -98,8 +104,8 @@ This page is for the LazyApp team and implementers comparing surfaces to Zernio.
 | Sandbox | `guides/sandbox.mdx` | Done (test mode; skip Zernio sessions API) |
 | Group chats | `guides/groups.mdx` | Done (partial — no participant/join APIs) |
 | Inbox | `guides/inbox.mdx` + `platform/inbox.mdx` + embeds | Done (recipient-centric; console for typing/archive) |
+| Flows | `guides/flows.mdx` + API reference | Done |
 | CTWA | — | Skip (referral passthrough on webhooks only) |
-| Flows guide | API reference | Guide TBD (`guides/flows.mdx`) |
 | Pricing & costs | `billing/overview.mdx`, `billing/whatsapp-rates.mdx`, `billing/mechanics.mdx` | Done |
 | Media & limits reference | `reference/media-and-limits.mdx` + `sending/media.mdx` | Done |
 | Migrate from Kapso | `migrating/from-kapso.mdx` | Done |

@@ -1,0 +1,225 @@
+---
+title: "Flows"
+description: "Create, publish, and send WhatsApp Flows — and collect submissions."
+---
+
+WhatsApp **Flows** are Meta-hosted interactive forms (screens of inputs and navigation) opened from a chat. LazyApp stores a workspace mirror of each flow, publishes to Meta, and records completions on webhooks and [`GET /v1/flows/{flow}/responses`](/api-reference/flows/list-flow-responses).
+
+Do not confuse Flows with [workflows](/api-reference/workflows/list-workflows) (LazyApp automation graphs) or [templates](/sending/templates) (approved outbound message shells). A Flow can be attached to a template button or sent as an interactive message inside the [24-hour window](/sending/messages#the-24-hour-window).
+
+<Warning>
+**Coexistence numbers** report `flows: false` and `flows.data_endpoint: false` on [`GET /v1/capabilities`](/concepts/capabilities). Build Flow onboarding for Cloud-API-only numbers. See [WhatsApp Business app coexistence](/guides/connecting-whatsapp#whatsapp-business-app-coexistence).
+</Warning>
+
+## Check before you build
+
+```bash
+curl https://lazyapp.in/v1/capabilities \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+| Capability | Meaning |
+| --- | --- |
+| `flows` | Create / publish / send Flows on this connection |
+| `flows.data_endpoint` | Dynamic Flows with your HTTPS data endpoint |
+| `messages.flow` | Interactive `type: flow` sends |
+
+**Required scope for management APIs:** `flows:write` (list, create, publish, deprecate, responses, endpoint health). Sending a Flow message also needs `messages:send`.
+
+## What LazyApp supports
+
+| Surface | Status |
+| --- | --- |
+| [`GET /v1/flows`](/api-reference/flows/list-flows) | List (cursor-paginated; filter `status`) |
+| [`POST /v1/flows`](/api-reference/flows/create-a-flow) | Create draft + upload Flow JSON to Meta |
+| [`GET /v1/flows/{flow}`](/api-reference/flows/retrieve-a-flow) | One flow by LazyApp `uuid` or Meta `provider_flow_id` |
+| [`POST /v1/flows/{flow}/publish`](/api-reference/flows/publish-a-flow) | Make sendable |
+| [`POST /v1/flows/{flow}/deprecate`](/api-reference/flows/deprecate-a-flow) | Stop new sends; open sessions continue |
+| [`GET /v1/flows/{flow}/endpoint-health`](/api-reference/flows/check-flow-endpoint-health) | Probe your data endpoint |
+| [`GET /v1/flows/{flow}/responses`](/api-reference/flows/list-flow-responses) | Completion payloads |
+| Send Flow | [`POST /v1/messages`](/sending/messages) with `interactive.type: flow` |
+| Starter templates / duplicate | **Console only** today |
+| Update published Flow JSON in place | **Not allowed** — clone in console, then publish |
+| Managed / hosted data-endpoint encryption | **Not built** — you host `data_endpoint_uri` |
+| Zernio `POST /v1/whatsapp/flows/send` | Use messages interactive instead |
+
+## Lifecycle
+
+```
+draft → publish → published (or throttled) → deprecate → deprecated
+```
+
+Meta may also mark a flow `blocked` or `throttled`. Only **`published`** and **`throttled`** are sendable. Published flows cannot be edited in place — create a new draft (console **Duplicate**) with a higher version.
+
+## Create a flow
+
+```bash
+curl -X POST https://lazyapp.in/v1/flows \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: flow-lead-1" \
+  -d '{
+    "name": "Lead capture",
+    "categories": ["LEAD_GENERATION"],
+    "flow_json": {
+      "version": "7.0",
+      "screens": [
+        {
+          "id": "LEAD",
+          "terminal": true,
+          "layout": {
+            "type": "SingleColumnLayout",
+            "children": []
+          }
+        }
+      ]
+    }
+  }'
+```
+
+| Field | Required | Notes |
+| --- | --- | --- |
+| `name` | Yes | Max 200 characters |
+| `categories` | Yes | At least one Meta Flow category string (for example `LEAD_GENERATION`, `APPOINTMENT_BOOKING`) |
+| `flow_json` | Yes | Object or JSON string — must include `screens`, unique screen `id`s, and at least one `terminal: true` screen |
+| `data_endpoint_uri` | No | **HTTPS** URL for dynamic Flows |
+| `public_key` | No | Encryption key material when Meta requires it for your endpoint |
+
+Invalid Flow JSON returns `422` with field errors before Meta is called. On success the flow is created at Meta and stored as `draft` with a `provider_flow_id`.
+
+```json
+{
+  "uuid": "9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d",
+  "name": "Lead capture",
+  "status": "draft",
+  "categories": ["LEAD_GENERATION"],
+  "provider_flow_id": "flow-777",
+  "version": 1,
+  "data_endpoint_uri": null,
+  "endpoint_health": null,
+  "published_at": null,
+  "created_at": "2026-09-02T08:00:00+00:00"
+}
+```
+
+Console starters (`lead_capture`, `appointment_booking`, and others) produce the same draft shape without writing Flow JSON by hand.
+
+## Publish and deprecate
+
+```bash
+curl -X POST https://lazyapp.in/v1/flows/9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d/publish \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Idempotency-Key: flow-lead-1-publish"
+```
+
+Publishing emits `flow.published` (or `flow.failed` on Meta error). Deprecate with `POST …/deprecate` when you want to stop attaching the flow to new messages.
+
+## Data endpoint health
+
+Dynamic Flows need a reachable HTTPS endpoint. Probe it:
+
+```bash
+curl https://lazyapp.in/v1/flows/9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d/endpoint-health \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+```json
+{
+  "reachable": true,
+  "status": 200,
+  "latency_ms": 84,
+  "error": null,
+  "checked_at": "2026-09-02T08:05:00+00:00"
+}
+```
+
+LazyApp posts a ping (`action: ping`) to your URI and records the result on the flow. Meta still calls your endpoint for live data exchange — LazyApp does **not** host or encrypt that traffic for you.
+
+## Send a Flow message
+
+Inside the customer-service window (or via a template that opens the Flow):
+
+```bash
+curl -X POST https://lazyapp.in/v1/messages \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: flow-send-1" \
+  -d '{
+    "type": "interactive",
+    "to": "+919812345670",
+    "interactive": {
+      "type": "flow",
+      "body": { "text": "Complete the form" },
+      "action": {
+        "name": "flow",
+        "parameters": {
+          "flow_message_version": "3",
+          "flow_id": "flow-777",
+          "flow_token": "session-token-1",
+          "flow_cta": "Open",
+          "flow_action": "navigate",
+          "flow_action_payload": {
+            "screen": "LEAD",
+            "data": {}
+          }
+        }
+      }
+    }
+  }'
+```
+
+Use Meta's `provider_flow_id` as `flow_id`. Workflows can launch published flows with a generated `flow_token` via the `launch_flow` node.
+
+## Collect responses
+
+When the contact finishes, Meta delivers an interactive `nfm_reply`. LazyApp:
+
+1. Stores a `WhatsAppFlowResponse` linked to the flow  
+2. Emits `flow.response_received`  
+3. Exposes the payload on the list API  
+
+```bash
+curl "https://lazyapp.in/v1/flows/9f8b1c2d-4e5f-4a6b-8c7d-0e1f2a3b4c5d/responses?limit=25" \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY"
+```
+
+```json
+{
+  "data": [
+    {
+      "uuid": "…",
+      "flow_token": "tok-123",
+      "payload": {
+        "flow_token": "tok-123",
+        "full_name": "Ada Lovelace"
+      },
+      "received_at": "2026-09-02T08:10:00+00:00"
+    }
+  ],
+  "next_cursor": null
+}
+```
+
+Prefer webhooks for live capture; list + console CSV export are for backfill and ops.
+
+## Provisioning with automation packs
+
+[`PUT /v1/automation-packs/provision`](/sending/automation-packs) can seed starter Flows for a vertical (`include_flows: true`) alongside events and workflows — useful for platform customers.
+
+## What we skip (Zernio-style)
+
+| Zernio surface | LazyApp |
+| --- | --- |
+| `/v1/whatsapp/flows/*` | Flat `/v1/flows/*` |
+| `POST …/flows/send` | [`POST /v1/messages`](/sending/messages) interactive |
+| Flow JSON / versions / preview as separate public routes | Create + show (`flow_json` on retrieve); versioning via console clone |
+| Managed data-endpoint hosting | Customer-hosted `data_endpoint_uri` only |
+| `accountId` on every call | Workspace from API key |
+
+## Related
+
+- [Capabilities](/concepts/capabilities) — `flows` flags  
+- [Messages](/sending/messages) — interactive types and the 24-hour window  
+- [Webhooks — Flows](/webhooks/events#flows) — `flow.published`, `flow.failed`, `flow.response_received`  
+- [Automation packs](/sending/automation-packs) — seed Flows for a vertical  
+- [Pending gaps vs Zernio](/pending-gaps-zernio) — hosted endpoint backlog  
