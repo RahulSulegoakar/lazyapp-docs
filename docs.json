@@ -151,6 +151,11 @@
       "vscode"
     ]
   },
+  "integrations": {
+    "ga4": {
+      "measurementId": "G-49PC1G9F94"
+    }
+  },
   "footer": {
     "socials": {
       "website": "https://lazyapp.in"
