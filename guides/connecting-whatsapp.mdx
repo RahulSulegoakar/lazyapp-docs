@@ -104,7 +104,7 @@ curl https://lazyapp.in/v1/platform/setup-links \
 
 ### Headless vs hosted
 
-LazyApp hosts the connect UI at `/connect/{token}`. You do not build a Meta page picker yourself — WhatsApp Embedded Signup selects the WABA and number inside Meta's flow.
+LazyApp hosts the connect UI at `/connect/{token}`. You do not build a Meta page picker yourself — WhatsApp Embedded Signup selects the WABA and number inside Meta's flow. Set a public connect host in **Branding** when that URL should use your domain. The host must proxy `/connect` to LazyApp.
 
 Optional per-link `success_webhook_url` / `failure_webhook_url` fire in addition to your workspace webhooks. Still treat them as secondary to `customer.connected` / `setup_link.failed`.
 

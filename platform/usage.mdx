@@ -65,7 +65,8 @@ Surface what the API gives you:
 | Field | Use |
 | --- | --- |
 | Period message count / charge | Primary chart |
-| `marked_up_total` / `markup_bps` | What you bill the tenant |
+| `wholesale_total` | What you pay LazyApp for the period. The prepaid wallet debits this, not your markup |
+| `marked_up_total` / `markup_bps` | What you bill the tenant. `markup_bps` of 1500 is 15% on top of `wholesale_total` |
 | `wallet_balance_cents` | Prepaid remaining |
 | `spending_limit_cents` | Cap before sends refuse with `402` |
 | `customer.usage_alert` webhook | Proactive warning in your UI |

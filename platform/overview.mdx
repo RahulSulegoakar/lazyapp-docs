@@ -90,7 +90,7 @@ customer = requests.post(
 ```
 </CodeGroup>
 
-`external_id` is your own account id, so you never need a mapping table. Look them up later with `GET /v1/platform/customers?external_id=acct_8812`. `markup_bps` is your margin in basis points — 1500 is 15%.
+`external_id` is your own account id, so you never need a mapping table. Look them up later with `GET /v1/platform/customers?external_id=acct_8812`. You pay LazyApp the usage charge on that customer’s sends, plus tax. `markup_bps` is the price you add when you invoice them, in basis points — 1500 is 15%. There is no product cap. LazyApp does not collect that markup, and it does not change what Meta bills on the WhatsApp account.
 
 See [Create a customer](/api-reference/platform/create-a-customer) for all fields.
 
@@ -112,7 +112,7 @@ curl https://lazyapp.in/v1/platform/setup-links \
 # → { "url": "https://lazyapp.in/connect/set_…", … }
 ```
 
-Hand `url` to your customer — email it, or put it behind a **Connect WhatsApp** button.
+Hand `url` to your customer — email it, or put it behind a **Connect WhatsApp** button. The host is LazyApp’s domain unless you set a public connect host under **Branding**. That value is an origin (`https://connect.yourapp.example`). Point it at LazyApp so `/connect/{token}` resolves, and the page shows your brand name, logo, and accent. Meta’s own signup screen still says Facebook.
 
 Subscribe to [`customer.connected`](/webhooks/events#platform) to learn about new connections server-side. Platform deliveries include a `customer` envelope with your `external_id`:
 

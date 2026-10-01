@@ -5764,8 +5764,8 @@
                   "markup_bps": {
                     "type": "integer",
                     "minimum": 0,
-                    "maximum": 100000,
-                    "description": "Your margin, in basis points."
+                    "maximum": 4294967295,
+                    "description": "Your retail markup on top of LazyApp's wholesale charge, in basis points. 1500 is 15%. LazyApp does not collect this."
                   },
                   "usage_alert_cents": {
                     "type": "integer",
@@ -5975,7 +5975,8 @@
                   "markup_bps": {
                     "type": "integer",
                     "minimum": 0,
-                    "maximum": 100000
+                    "maximum": 4294967295,
+                    "description": "Your retail markup on top of LazyApp's wholesale charge, in basis points. 1500 is 15%. LazyApp does not collect this."
                   },
                   "usage_alert_cents": {
                     "type": "integer",
@@ -11259,7 +11260,15 @@
                 "type": "integer"
               },
               "total_charge": {
+                "type": "number",
+                "description": "Wholesale amount you pay LazyApp. Same as wholesale_total."
+              },
+              "wholesale_total": {
                 "type": "number"
+              },
+              "marked_up_total": {
+                "type": "number",
+                "description": "What you bill the tenant after markup_bps."
               }
             }
           }

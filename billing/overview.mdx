@@ -25,7 +25,7 @@ There is **no** Zernio-style Usage plan with the first **10,000 outbound message
 | Item | LazyApp |
 | --- | --- |
 | Subscription | Starter / Growth / Business plans — see [Plans](#plans) |
-| Outbound messages | Wallet debit per billable send (broadcast = one row per recipient) |
+| Outbound messages | Wallet debit of the LazyApp usage charge for that message, plus tax (broadcast = one row per recipient) |
 | Dedicated phone number SKU | **Not sold** — connect your WABA via [Embedded Signup](/guides/connecting-whatsapp) or claim a [test sandbox](/guides/sandbox) |
 | Inbound DMs | No per-message LazyApp meter for receiving |
 | Calling — carrier leg / recording | **Not sold** — no CPaaS minute invoice; see [Calling rates](/billing/whatsapp-rates#calls) |
@@ -62,7 +62,7 @@ Every outbound message can produce a usage record with:
 | `pricing_category` | `service`, `utility`, `authentication`, or `marketing` |
 | `recipient_region` | Resolved from the recipient's E.164 prefix |
 | `meta_rate` | Meta-category rate stored for the region (transparency / cost) |
-| `lazyapp_charge` | What LazyApp bills for that send |
+| `lazyapp_charge` | LazyApp usage charge for that send |
 | Tax and payment fee | Applied on the LazyApp charge |
 | `is_free` / `free_reason` | When the send did not debit |
 
@@ -76,7 +76,7 @@ Meta defines conversation / message categories and country rates. LazyApp record
 
 Details and free-window rules: [WhatsApp message rates](/billing/whatsapp-rates).
 
-Meta charges **per delivered template message** (by category and recipient country) and **per minute of outbound calling** when enabled — billed to your WABA, not through LazyApp's wallet. LazyApp does not mark up Meta's fees; the usage ledger stores `meta_rate` for transparency. Non-template messages inside the [24-hour customer service window](/sending/messages#the-24-hour-window) are typically free on Meta's side for service traffic; utility templates may follow Meta's current in-window promotions independently of LazyApp's free rules.
+Meta charges **per delivered template message** (by category and recipient country) and **per minute of outbound calling** when enabled — billed to your WABA, not through LazyApp's wallet. LazyApp invoices a usage charge (`lazyapp_charge`) plus tax for each billable message. The usage ledger stores `meta_rate` beside it. The payment fee on the row is not added again to `total_charge`. Non-template messages inside the [24-hour customer service window](/sending/messages#the-24-hour-window) are typically free on Meta's side for service traffic; utility templates may follow Meta's current in-window promotions independently of LazyApp's free rules.
 
 ## Sandbox vs production
 

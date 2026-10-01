@@ -35,7 +35,7 @@ There is no automatic “accrue until $10 then double the threshold” loop. Bra
 
 1. An outbound message is accepted and (when delivery rules say so) a [usage](/billing/overview#usage-ledger) row is written for the calendar month `YYYY-MM`.
 2. If the send is free (`is_free`), `total_charge` is zero — no debit.
-3. Otherwise `total_charge` = LazyApp charge + tax + payment fee (see [WhatsApp message rates](/billing/whatsapp-rates)).
+3. Otherwise the wallet debits `lazyapp_charge` plus tax as `total_charge`. The payment fee is recorded on the row and is not added again (see [WhatsApp message rates](/billing/whatsapp-rates)).
 4. For a prepaid workspace billing account, that amount is rounded to cents and debited with idempotency key `usage:{id}` so a retry cannot double-charge.
 5. Platform child workspaces skip the team wallet and debit the [platform customer](/platform/overview) prepaid wallet (or accumulate under postpaid / spending limits) instead.
 
