@@ -244,9 +244,9 @@ WhatsApp credentials fail: Meta reviews, quality issues, or a customer reconnect
 
 | Mode | Meaning |
 | --- | --- |
-| `inherit` | Billed on your account, as your own usage |
-| `prepaid` | Draws down a wallet balance. Sending stops at zero |
-| `postpaid` | Accrues and is invoiced |
+| `inherit` | Default. Billable messages debit your platform wallet for the wholesale charge, once you have added funds or subscribed. You invoice any markup yourself |
+| `prepaid` | Draws down that customer's wallet. Sending stops at zero. Your platform wallet is not debited |
+| `postpaid` | Usage is recorded. Neither wallet is debited. You invoice them |
 
 Set `spending_limit_cents` to cap a customer, and `usage_alert_cents` to receive `customer.usage_alert` before they hit it. Read consumption with [`GET /v1/platform/customers/{customer}/usage`](/platform/usage).
 

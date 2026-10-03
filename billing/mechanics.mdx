@@ -37,7 +37,7 @@ There is no automatic “accrue until $10 then double the threshold” loop. Bra
 2. If the send is free (`is_free`), `total_charge` is zero — no debit.
 3. Otherwise the wallet debits `lazyapp_charge` plus tax as `total_charge`. The payment fee is recorded on the row and is not added again (see [WhatsApp message rates](/billing/whatsapp-rates)).
 4. For a prepaid workspace billing account, that amount is rounded to cents and debited with idempotency key `usage:{id}` so a retry cannot double-charge.
-5. Platform child workspaces skip the team wallet and debit the [platform customer](/platform/overview) prepaid wallet (or accumulate under postpaid / spending limits) instead.
+5. A platform customer on `inherit` (the default) debits the platform team's wallet for that `total_charge`, once the platform wallet is prepaid-active. `prepaid` debits the customer's own wallet instead. `postpaid` records the row and debits neither wallet. Markup is not part of either debit.
 
 Failed deliveries are not charged by default.
 
@@ -53,7 +53,8 @@ When `billing.enforce_team_wallet` is on (default):
 | --- | --- |
 | Prepaid wallet balance ≤ 0 | Send refused (surfaces as `402` on the API) |
 | Period spend ≥ `spending_limit_cents` | Send refused |
-| Platform customer prepaid wallet empty | Same for that tenant |
+| Platform customer on `inherit`, platform wallet empty and prepaid-active | Send refused |
+| Platform customer prepaid wallet empty | Send refused for that customer |
 | No billing account / not prepaid-active | Enforcement does not block (until billing is activated) |
 
 Optional `usage_alert_cents` records that an alert fired (at most once per day) when the wallet falls to or below that level — platforms also get `customer.usage_alert` webhooks.
@@ -81,7 +82,7 @@ If auto-recharge is on with threshold $5 and package $25, a burst that leaves th
 - **Is there a free credit for “two accounts”?** No social free tier. Onboarding wallet credits (default $10) are the one-time grant.
 - **What window does usage measure?** Calendar month on each usage row.
 - **If I resend the same message?** Idempotency on send and on `usage:{id}` wallet debit prevent double-charging the same usage row; a new message creates a new row.
-- **Platform vs direct workspace?** Direct workspaces use the team billing account. Platform tenants use customer `billing_mode`, wallet, and spending limits — see [Tenant usage](/platform/usage).
+- **Platform vs direct workspace?** Direct workspaces use the team billing account. A platform customer on `inherit` uses that same platform wallet. `prepaid` uses the customer wallet. `postpaid` records usage without a debit. See [Billing modes](/platform/overview#billing-modes).
 
 ## Related
 
