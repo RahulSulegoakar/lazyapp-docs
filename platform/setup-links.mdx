@@ -48,6 +48,7 @@ For the full connect story (console vs platform, webhooks, reconnect), see [Conn
 | `locale` | Renders the connect screen in their language |
 | `success_webhook_url` / `failure_webhook_url` | Per-link callbacks, in addition to your workspace webhooks |
 | `template_set` | Starter templates to apply when the customer connects. Valid keys from [`GET /v1/templates/sets`](/api-reference/templates/list-starter-template-sets) |
+| `meta_billing_mode` | `customer_managed` (default) or `partner_managed`. Stored on the link and applied to the WhatsApp Business Account. It cannot be changed later on that account |
 
 ## Starter templates
 

@@ -218,7 +218,7 @@ See [Webhooks](/webhooks/overview) for delivery, retries, and signature verifica
 
 ## Rate limits with many tenants
 
-One platform API key is enough for your whole integration. LazyApp limits **per key** (120 requests/minute by default — see [rate limits](/reference/rate-limits)). Meta separately caps how many unique contacts a number may message in 24 hours; that limit is per connection, reported on [`GET /v1/capabilities`](/concepts/capabilities).
+One platform API key is enough for your whole integration. LazyApp limits **per key** to the plan ceiling (100 requests/minute on Free — see [rate limits](/reference/rate-limits)). Meta separately caps how many unique contacts a number may message in 24 hours; that limit is per connection, reported on [`GET /v1/capabilities`](/concepts/capabilities).
 
 That budget serves all your tenants together, which has three practical consequences:
 
@@ -244,8 +244,8 @@ WhatsApp credentials fail: Meta reviews, quality issues, or a customer reconnect
 
 | Mode | Meaning |
 | --- | --- |
-| `inherit` | Default. Billable messages debit your platform wallet for the wholesale charge, once you have added funds or subscribed. You invoice any markup yourself |
-| `prepaid` | Draws down that customer's wallet. Sending stops at zero. Your platform wallet is not debited |
+| `inherit` | Default. Billable partner-managed messages debit your platform wallet for `total_charge` (the Meta pass-through). You invoice any markup yourself |
+| `prepaid` | Draws down that customer's wallet for the same pass-through. Sending stops at zero. Your platform wallet is not debited |
 | `postpaid` | Usage is recorded. Neither wallet is debited. You invoice them |
 
 Set `spending_limit_cents` to cap a customer, and `usage_alert_cents` to receive `customer.usage_alert` before they hit it. Read consumption with [`GET /v1/platform/customers/{customer}/usage`](/platform/usage).

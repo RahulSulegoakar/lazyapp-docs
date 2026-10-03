@@ -27,6 +27,9 @@ Send refusals also carry a stable `code` so your client can branch without strin
 | `send_burst_limit` | Workspace hit its per-minute send ceiling | Back off; see [rate limits](/reference/rate-limits) |
 | `recipient_rate_limit` | Too many messages to this contact in the last hour | Slow down to this recipient |
 | `failure_rate_paused` | Most recent outbound messages failed | Fix recipients / connection before retrying |
+| `plan_message_allowance_exhausted` | Monthly plan message allowance is used up | Upgrade the plan. Returns `402` |
+| `insufficient_credits` | Partner-managed wallet is empty | Top up. Returns `402` |
+| `service_credits_exhausted` | Service paused after a settled charge on an empty wallet | Top up. Returns `402` |
 
 Check `service_window` on [`GET /v1/contacts/{contact}`](/api-reference/contacts/retrieve-a-contact) before sending to avoid the closed-window refusal.
 
@@ -55,7 +58,7 @@ Validation failures add a per-field `errors` map:
 | --- | --- | --- |
 | `400` | Malformed request | No — fix the request |
 | `401` | Missing or invalid API key | No |
-| `402` | Spending limit or wallet balance exhausted | After topping up |
+| `402` | Plan allowance or partner-managed wallet exhausted | After upgrading or topping up |
 | `403` | Key lacks the scope, or is restricted from this number | No |
 | `404` | Not found in this workspace | No |
 | `409` | An idempotent request with this key is still running | Yes, after a pause |

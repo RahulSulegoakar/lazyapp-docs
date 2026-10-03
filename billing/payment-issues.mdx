@@ -1,0 +1,28 @@
+---
+title: "Payment issues"
+description: "What to do when sends stop because of the plan, the wallet, or Meta billing."
+---
+
+Sends return `402` for billing. Other refusals stay `422`. Branch on `code`.
+
+| `code` | Cause | What to do |
+| --- | --- | --- |
+| `plan_message_allowance_exhausted` | The paying team's monthly message allowance is used up | Upgrade the plan. Reactions and inbound messages count. Read receipts do not |
+| `insufficient_credits` | Partner-managed templates or other non-service sends, and the prepaid wallet is at or below zero | Top up the wallet that this workspace draws (yours, the platform wallet on `inherit`, or the customer wallet on `prepaid`) |
+| `service_credits_exhausted` | The wallet is empty and a settled service charge has already been taken | Top up before the next service reply |
+
+`integration_call_allowance_exhausted` stops a workflow HTTP step when the monthly integration-call allowance is used up. `media_storage_exhausted` stops a media upload that would pass the plan's storage cap.
+
+## Customer-managed accounts
+
+An empty LazyApp wallet does not pay Meta, and it does not pause these sends for credits. If Meta stops delivery, fix the payment method on the WhatsApp Business Account. Setup that finds an existing payment method stays customer-managed and does not pause sends.
+
+## Partner-managed accounts
+
+The wallet must cover the published rate. Service is not paused on the first empty-wallet check. It pauses after Meta has marked a service message billable and that charge settled.
+
+Funding status `revoked` pauses paid messages (`funding_revoked`). `not_attached` means no credit line is configured. The wallet can still debit, and Meta may still invoice the account.
+
+## Platform customers
+
+`postpaid` records usage and does not debit a wallet, so an empty wallet is not the pause. The plan allowance on the parent team still applies.

@@ -65,7 +65,7 @@ Surface what the API gives you:
 | Field | Use |
 | --- | --- |
 | Period message count / charge | Primary chart |
-| `wholesale_total` | What you pay LazyApp for the period. `inherit` debits your platform wallet this amount. `prepaid` debits the customer wallet. Markup is not included |
+| `wholesale_total` | Recorded pass-through for the period (`total_charge`). `inherit` debits your platform wallet this amount. `prepaid` debits the customer wallet. Markup is not included |
 | `marked_up_total` / `markup_bps` | What you bill the tenant. `markup_bps` of 1500 is 15% on top of `wholesale_total` |
 | `wallet_balance_cents` | Prepaid remaining |
 | `spending_limit_cents` | Cap before sends refuse with `402` |

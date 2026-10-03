@@ -1,0 +1,51 @@
+---
+title: "Meta message billing"
+description: "Choose whether Meta invoices the WhatsApp Business Account or your wallet pays the published rate."
+---
+
+`meta_billing_mode` is set on the setup link and stored for that WhatsApp Business Account. It does not change later on the same account.
+
+| Mode | Wallet | Meta |
+| --- | --- | --- |
+| `customer_managed` | Records `meta_rate`. `total_charge` is zero | Meta invoices the account |
+| `partner_managed` | Debits the published rate, plus FX and the external fee when they apply | Meta may still invoice the account until a credit line is attached |
+
+The default is `customer_managed`. If the account already has its own payment method, setup stays customer-managed (`reason` `existing_payment_method`) and sends are not paused.
+
+A partner-managed account cannot be switched back to customer-managed on the same WhatsApp Business Account.
+
+## Pass-through
+
+The wallet charge equals Meta's stored USD rate for that category and region.
+
+- When `waba_currency` is not `USD`, a 5% FX margin is applied.
+- When messages are not processed by LazyApp, a further 5% is applied.
+- Tax is not added. The payment fee is recorded and is not part of `total_charge`.
+
+## Funding status
+
+`GET /v1/whatsapp/accounts/{wabaId}/funding` (scope `billing:read`) returns the local funding row:
+
+```json
+{
+  "data": {
+    "waba_id": "1234567890",
+    "status": "not_funded",
+    "reason": "not_attached",
+    "meta_billing_mode": "partner_managed",
+    "paid_messages": { "paused": false, "reasons": [] }
+  }
+}
+```
+
+Statuses are `funded`, `pending`, `unknown`, `not_funded`, and `revoked`. Until `META_CREDIT_LINE_ID` is set, ensure records `not_attached` and does not call Meta's credit-line API. `funded` is not set automatically.
+
+`POST /v1/whatsapp/accounts/{wabaId}/funding` with `business_portfolio_id` (scope `customers:write`) records that status. A new run that is not funded returns `202`. A repeat within 30 seconds reuses the last operation and returns `200`.
+
+## Usage
+
+`GET /v1/whatsapp/accounts/{wabaId}/usage?start_time=...&end_time=...` and the portfolio equivalent return LazyApp's recorded charges for at most 31 days. Amounts are micro-USD (`total_charge` × 1,000,000). `time_basis` is `recorded_at`. `charge_scope` is `lazyapp_recorded_charges`.
+
+## Stop
+
+`POST /v1/whatsapp/portfolios/{portfolioId}/funding/revoke` with an `Idempotency-Key` (scope `customers:write`) returns `202` and sets funding to `revoked`, pauses paid messages, and records `funding_revoked`. This does not call Meta. A later ensure on a revoked account returns `409`.

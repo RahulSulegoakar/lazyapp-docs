@@ -60,7 +60,9 @@
             "pages": [
               "billing/overview",
               "billing/whatsapp-rates",
-              "billing/mechanics"
+              "billing/mechanics",
+              "billing/meta-message-billing",
+              "billing/payment-issues"
             ]
           },
           {
@@ -91,6 +93,7 @@
               "platform/overview",
               "platform/messaging",
               "platform/usage",
+              "platform/funding",
               "platform/inbox",
               "platform/setup-links",
               "platform/embedded-components"

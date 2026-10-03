@@ -1,0 +1,22 @@
+---
+title: "Funding"
+description: "Read funding status, record a portfolio, and stop partner-managed billing for a portfolio."
+---
+
+These routes are on the platform API key. Scopes are `billing:read` for reads and `customers:write` for writes.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/v1/whatsapp/accounts/{wabaId}/funding` | Funding status for one WhatsApp Business Account |
+| `POST` | `/v1/whatsapp/accounts/{wabaId}/funding` | Body `business_portfolio_id`. Records local funding. `202` when a new run is not funded |
+| `GET` | `/v1/whatsapp/accounts/{wabaId}/usage` | Query `start_time`, `end_time` (ISO 8601, at most 31 days) |
+| `GET` | `/v1/whatsapp/portfolios/{portfolioId}/accounts` | Cursor list, `limit` default 20 |
+| `GET` | `/v1/whatsapp/portfolios/{portfolioId}/usage` | Same usage window as the account route |
+| `POST` | `/v1/whatsapp/portfolios/{portfolioId}/funding/revoke` | Header `Idempotency-Key`. Returns `202` |
+| `GET` | `/v1/whatsapp/portfolios/{portfolioId}/funding/operations/{operationId}` | Status of an ensure or revoke operation |
+
+`meta_billing_mode` is chosen when you create the setup link and is not changed by these routes. See [Meta message billing](/billing/meta-message-billing).
+
+Calling usage is included only when every visible account currency is USD. Otherwise the coverage reason is `calling_requires_usd_waba`.
+
+Revoke is local. It marks the portfolio revoked and pauses paid messages. It does not call Meta, and it does not detach a credit line that was never attached.
