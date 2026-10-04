@@ -14,7 +14,7 @@ empty wallet or plan cap → HTTP 402
 
 | Action | What happens |
 | --- | --- |
-| Subscribe | Checkout for the configured plan product. On success the account plan becomes Free, Pro, Platform, or Enterprise, and included wallet credits are applied when that plan has them |
+| Subscribe | Checkout for Pro, or an Enterprise arrangement. On success the account plan updates, and included wallet credits are applied when that plan has them |
 | Wallet top-up ($10 / $25 / $50 / $100) | Checkout. On `payment.succeeded` the wallet is credited and an invoice is stored |
 | Claim onboarding credits | One-time wallet credit (default **$1**) when a billing account is created. Managed customer workspaces do not receive it |
 

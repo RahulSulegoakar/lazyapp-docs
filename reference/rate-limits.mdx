@@ -5,7 +5,7 @@ description: "Two limits apply: ours and Meta's — plus send-velocity guards."
 
 ## LazyApp's API limit
 
-Requests are limited **per API key**. The ceiling is the workspace plan: **100** per minute on Free, **1,000** on Pro, **2,000** on Platform, and **4,000** on Enterprise. Capacity uses a fixed one-minute window. Every response tells you where you stand:
+Requests are limited **per API key**. The ceiling is the workspace plan: **100** per minute on Free, **1,000** on Pro, and **4,000** on Enterprise. A workspace still on the retired Platform plan stays at **2,000**. Capacity uses a fixed one-minute window. Every response tells you where you stand:
 
 ```http
 X-RateLimit-Limit: 100
