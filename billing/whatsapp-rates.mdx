@@ -3,7 +3,7 @@ title: "WhatsApp message rates"
 description: "Categories Meta prices, what is free in LazyApp, and how calling fits in."
 ---
 
-WhatsApp messaging has **categories** and **regions**. LazyApp records both on the usage ledger. A partner-managed account debits the wallet for Meta's published rate. A customer-managed account records the rate and debits nothing.
+WhatsApp messaging has **categories** and **regions**. LazyApp records both on the usage ledger and adds 20% on Meta's published rate. A partner-managed account debits the wallet for that total. A customer-managed account records the rate and debits only the 20%.
 
 ## Categories
 
@@ -27,7 +27,7 @@ Configurable in `pricing.free_rules` (defaults):
 | Monthly free service allowance | **0** | No local monthly service allowance. Live partner-managed service is settled from Meta's billable flag |
 | Failed deliveries | Not charged | Failed outbound does not debit unless you enable charging failures |
 
-Test mode charges service at the published rate immediately and ignores the in-window rule and any monthly allowance. Treat `is_free` and `free_reason` on the usage row as what LazyApp billed.
+Test mode charges service immediately and ignores the in-window rule and any monthly allowance. Treat `is_free` and `free_reason` on the usage row as what LazyApp billed.
 
 ## Indicative India rates (Meta, INR)
 
@@ -75,7 +75,7 @@ LazyApp does **not** publish a separate carrier-minute rate card or recording ad
 ## Payment method on the WABA
 
 <Warning>
-On `customer_managed`, Meta invoices the WhatsApp Business Account. Keep a payment method there or delivery can stop even when your LazyApp wallet has funds. On `partner_managed`, the wallet pays the published rate, and Meta may still invoice the account until a credit line is attached. See [Payment issues](/billing/payment-issues).
+On `customer_managed`, Meta invoices the WhatsApp Business Account and the wallet pays LazyApp’s 20%. Keep a payment method on the account or delivery can stop even when your LazyApp wallet has funds. On `partner_managed`, the wallet pays the published rate plus 20%, and Meta may still invoice the account until a credit line is attached. See [Payment issues](/billing/payment-issues).
 </Warning>
 
 ## Related

@@ -90,7 +90,7 @@ customer = requests.post(
 ```
 </CodeGroup>
 
-`external_id` is your own account id, so you never need a mapping table. Look them up later with `GET /v1/platform/customers?external_id=acct_8812`. You pay LazyApp the usage charge on that customer’s sends, plus tax. `markup_bps` is the price you add when you invoice them, in basis points — 1500 is 15%. There is no product cap. LazyApp does not collect that markup, and it does not change what Meta bills on the WhatsApp account.
+`external_id` is your own account id, so you never need a mapping table. Look them up later with `GET /v1/platform/customers?external_id=acct_8812`. You pay LazyApp the usage charge on that customer’s sends. That charge is Meta’s rate plus 20% when the wallet pays the message, and 20% of Meta’s rate when Meta invoices the WhatsApp account. `markup_bps` is the price you add when you invoice them, in basis points — 1500 is 15%. There is no product cap. LazyApp does not collect that markup.
 
 See [Create a customer](/api-reference/platform/create-a-customer) for all fields.
 
@@ -244,8 +244,8 @@ WhatsApp credentials fail: Meta reviews, quality issues, or a customer reconnect
 
 | Mode | Meaning |
 | --- | --- |
-| `inherit` | Default. Billable partner-managed messages debit your platform wallet for `total_charge` (the Meta pass-through). You invoice any markup yourself |
-| `prepaid` | Draws down that customer's wallet for the same pass-through. Sending stops at zero. Your platform wallet is not debited |
+| `inherit` | Default. Billable messages debit your platform wallet for `total_charge` (Meta’s rate plus LazyApp’s 20% when the wallet pays the message, or 20% of Meta’s rate when Meta invoices the account). You invoice any markup yourself |
+| `prepaid` | Draws down that customer's wallet for the same charge. Sending stops at zero. Your platform wallet is not debited |
 | `postpaid` | Usage is recorded. Neither wallet is debited. You invoice them |
 
 Set `spending_limit_cents` to cap a customer, and `usage_alert_cents` to receive `customer.usage_alert` before they hit it. Read consumption with [`GET /v1/platform/customers/{customer}/usage`](/platform/usage).

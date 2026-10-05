@@ -6,7 +6,7 @@ description: "When the wallet is debited, when service charges wait for Meta, an
 ```text
 plan allowance  →  counted on each message (not a wallet debit)
 partner-managed →  usage row, then wallet debit of total_charge
-customer-managed → usage row with meta_rate, total_charge 0
+customer-managed → usage row with meta_rate, total_charge = 20% of that rate
 empty wallet or plan cap → HTTP 402
 ```
 
@@ -21,11 +21,11 @@ empty wallet or plan cap → HTTP 402
 ## When a message is debited
 
 1. LazyApp resolves the Meta rate for the category and recipient region.
-2. `customer_managed` stores that rate and sets `total_charge` to zero (`free_reason` `customer_managed`).
-3. `partner_managed` sets `total_charge` to the pass-through: the Meta rate, then FX and the external fee when they apply.
+2. `customer_managed` stores that rate and sets `total_charge` to 20% of it. Meta invoices the published rate.
+3. `partner_managed` sets `total_charge` to the Meta rate plus 20%, then FX and the external fee when they apply.
 4. Templates and other non-service sends debit immediately when the wallet is prepaid-active.
 5. Live service sends stay `settlement_status` `pending` with a zero total until Meta reports `pricing.billable`. `false` waives the row (`free_reason` `meta_service_allowance`). `true` quotes and debits once.
-6. Test mode charges service at the published rate immediately. The Meta service allowance and the in-window free rule do not apply.
+6. Test mode charges service immediately, at the Meta rate plus 20% when the account is partner-managed, and at 20% of the Meta rate when it is customer-managed. The Meta service allowance and the in-window free rule do not apply.
 
 Failed deliveries stay free unless failed-message charging is enabled. Utility inside the 24-hour window is charged unless that free rule is enabled.
 

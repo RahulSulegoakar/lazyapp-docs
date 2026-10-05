@@ -8,7 +8,7 @@ LazyApp bills you for the product. Meta bills delivered WhatsApp messages. Those
 1. **A plan** sets how many messages, numbers, and integration calls the workspace can use, plus HTTP and workflow limits.
 2. **Meta message fees** are either left on the WhatsApp Business Account, or passed through your LazyApp wallet when you choose partner-managed billing.
 
-There is no monthly free-message ladder on the wallet. The plan allowance is the product cap. The wallet pays Meta's published rate only when that WhatsApp Business Account is partner-managed.
+There is no monthly free-message ladder on the wallet. The plan allowance is the product cap. LazyApp adds 20% on Meta's published rate for every billable send.
 
 ## Plans
 
@@ -31,13 +31,13 @@ The Platform plan is not offered. A workspace already on it keeps that allowance
 | Bill | Who charges | Where it shows up |
 | --- | --- | --- |
 | Plan | LazyApp | Message count, number overage, storage, integration calls |
-| Meta message fee | Meta, or your wallet when partner-managed | Usage ledger `meta_rate` and, when partner-managed, `total_charge` |
+| Meta message fee | Meta, and LazyApp’s 20% on that rate | Usage ledger `meta_rate` and `total_charge` |
 
-`customer_managed` is the default. LazyApp records `meta_rate` and debits nothing. Meta may still invoice the WhatsApp Business Account.
+`customer_managed` is the default. LazyApp records `meta_rate` and debits 20% of it. Meta may still invoice the WhatsApp Business Account for the published rate.
 
-`partner_managed` debits the wallet for the published Meta rate on that category and region. A 5% FX margin applies when the account currency is not USD. A further 5% applies when messages are not processed by LazyApp. Tax is not added on the pass-through. The payment fee is stored on the usage row and is not added to `total_charge`.
+`partner_managed` debits the wallet for the published Meta rate plus 20%. A 5% FX margin applies when the account currency is not USD. A further 5% applies when messages are not processed by LazyApp. Tax is not added. The payment fee is stored on the usage row and is not added to `total_charge`.
 
-LazyApp does not attach a Meta credit line until `META_CREDIT_LINE_ID` is configured. Until then, funding status stays `not_attached`. The wallet can still debit the published rate for a partner-managed account, and Meta may still invoice that account.
+LazyApp does not attach a Meta credit line until `META_CREDIT_LINE_ID` is configured. Until then, funding status stays `not_attached`. The wallet can still debit a partner-managed account, and Meta may still invoice that account.
 
 See [Meta message billing](/billing/meta-message-billing) and [WhatsApp message rates](/billing/whatsapp-rates).
 

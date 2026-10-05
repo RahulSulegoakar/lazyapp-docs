@@ -1,25 +1,27 @@
 ---
 title: "Meta message billing"
-description: "Choose whether Meta invoices the WhatsApp Business Account or your wallet pays the published rate."
+description: "Choose whether Meta invoices the WhatsApp Business Account or your wallet pays Meta’s rate plus 20%."
 ---
 
 `meta_billing_mode` is set on the setup link and stored for that WhatsApp Business Account. It does not change later on the same account.
 
 | Mode | Wallet | Meta |
 | --- | --- | --- |
-| `customer_managed` | Records `meta_rate`. `total_charge` is zero | Meta invoices the account |
-| `partner_managed` | Debits the published rate, plus FX and the external fee when they apply | Meta may still invoice the account until a credit line is attached |
+| `customer_managed` | Records `meta_rate`. `total_charge` is 20% of that rate | Meta invoices the account |
+| `partner_managed` | Debits the published rate plus 20%, then FX and the external fee when they apply | Meta may still invoice the account until a credit line is attached |
 
 The default is `customer_managed`. If the account already has its own payment method, setup stays customer-managed (`reason` `existing_payment_method`) and sends are not paused.
 
 A partner-managed account cannot be switched back to customer-managed on the same WhatsApp Business Account.
 
-## Pass-through
+## LazyApp’s 20%
 
-The wallet charge equals Meta's stored USD rate for that category and region.
+LazyApp adds 20% on Meta's stored USD rate for that category and region.
 
-- When `waba_currency` is not `USD`, a 5% FX margin is applied.
-- When messages are not processed by LazyApp, a further 5% is applied.
+- On `partner_managed`, `total_charge` is that total.
+- On `customer_managed`, `total_charge` is only the 20%. Meta invoices the published rate.
+- When `waba_currency` is not `USD`, a 5% FX margin is applied on the partner-managed total.
+- When messages are not processed by LazyApp, a further 5% is applied on the partner-managed total.
 - Tax is not added. The payment fee is recorded and is not part of `total_charge`.
 
 ## Funding status

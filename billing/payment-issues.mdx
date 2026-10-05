@@ -15,11 +15,11 @@ Sends return `402` for billing. Other refusals stay `422`. Branch on `code`.
 
 ## Customer-managed accounts
 
-An empty LazyApp wallet does not pay Meta, and it does not pause these sends for credits. If Meta stops delivery, fix the payment method on the WhatsApp Business Account. Setup that finds an existing payment method stays customer-managed and does not pause sends.
+An empty LazyApp wallet does not pause these sends. Meta still invoices the WhatsApp Business Account, and a funded wallet is debited LazyApp’s 20%. If Meta stops delivery, fix the payment method on the WhatsApp Business Account. Setup that finds an existing payment method stays customer-managed and does not pause sends.
 
 ## Partner-managed accounts
 
-The wallet must cover the published rate. Service is not paused on the first empty-wallet check. It pauses after Meta has marked a service message billable and that charge settled.
+The wallet must cover Meta’s rate plus LazyApp’s 20%. Service is not paused on the first empty-wallet check. It pauses after Meta has marked a service message billable and that charge settled.
 
 Funding status `revoked` pauses paid messages (`funding_revoked`). `not_attached` means no credit line is configured. The wallet can still debit, and Meta may still invoice the account.
 
