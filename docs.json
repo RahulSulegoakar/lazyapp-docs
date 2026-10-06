@@ -3,9 +3,9 @@
   "theme": "mint",
   "name": "LazyApp",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#075E54",
+    "light": "#25D366",
+    "dark": "#075E54"
   },
   "favicon": "/favicon.svg",
   "navigation": {
