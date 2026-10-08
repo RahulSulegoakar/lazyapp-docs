@@ -5765,7 +5765,7 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 4294967295,
-                    "description": "Your retail markup on top of LazyApp's wholesale charge, in basis points. 1500 is 15%. LazyApp does not collect this."
+                    "description": "Percentage on top of LazyApp's price, in basis points. 1500 is 15%. On prepaid billing this is included in the customer wallet debit."
                   },
                   "usage_alert_cents": {
                     "type": "integer",
@@ -5976,7 +5976,48 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 4294967295,
-                    "description": "Your retail markup on top of LazyApp's wholesale charge, in basis points. 1500 is 15%. LazyApp does not collect this."
+                    "description": "Percentage on top of LazyApp's price, in basis points. 1500 is 15%. Used when pricing_mode is percent. On prepaid billing this is included in the customer wallet debit."
+                  },
+                  "pricing_mode": {
+                    "type": "string",
+                    "enum": [
+                      "percent",
+                      "category"
+                    ],
+                    "description": "percent adds markup_bps. category adds category_markups on top of LazyApp's price for each message type."
+                  },
+                  "category_markups": {
+                    "type": "object",
+                    "description": "Rupees added per delivered message when pricing_mode is category. Each value is from 0 to 10000.",
+                    "properties": {
+                      "marketing": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 10000
+                      },
+                      "utility": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 10000
+                      },
+                      "authentication": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 10000
+                      },
+                      "service": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 10000
+                      }
+                    }
+                  },
+                  "platform_fee": {
+                    "type": "number",
+                    "nullable": true,
+                    "minimum": 0,
+                    "maximum": 100000,
+                    "description": "Optional monthly amount in rupees. Charged once per calendar month from a prepaid customer wallet. Send null or an empty string to clear it."
                   },
                   "usage_alert_cents": {
                     "type": "integer",
@@ -11223,6 +11264,35 @@
           },
           "markup_bps": {
             "type": "integer"
+          },
+          "pricing_mode": {
+            "type": "string",
+            "enum": [
+              "percent",
+              "category"
+            ]
+          },
+          "category_markups": {
+            "type": "object",
+            "description": "Rupees added per message type, as decimal strings.",
+            "properties": {
+              "marketing": {
+                "type": "string"
+              },
+              "utility": {
+                "type": "string"
+              },
+              "authentication": {
+                "type": "string"
+              },
+              "service": {
+                "type": "string"
+              }
+            }
+          },
+          "platform_fee": {
+            "type": "string",
+            "description": "Monthly platform fee in rupees, as a decimal string. Empty when unset."
           },
           "usage_alert_cents": {
             "type": "integer",

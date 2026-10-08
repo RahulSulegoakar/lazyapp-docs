@@ -90,7 +90,7 @@ customer = requests.post(
 ```
 </CodeGroup>
 
-`external_id` is your own account id, so you never need a mapping table. Look them up later with `GET /v1/platform/customers?external_id=acct_8812`. You pay LazyApp the usage charge on that customer’s sends. That charge is Meta’s rate plus 20% when the wallet pays the message, and 20% of Meta’s rate when Meta invoices the WhatsApp account. `markup_bps` is a percentage on top of LazyApp’s price, in basis points — 1500 is 15%. You can instead store a rupee amount per message category, and an optional monthly platform fee. There is no product cap. On inherit billing LazyApp does not collect that markup. On prepaid billing the customer balance is debited the marked-up amount.
+`external_id` is your own account id, so you never need a mapping table. Look them up later with `GET /v1/platform/customers?external_id=acct_8812`. You pay LazyApp the usage charge on that customer’s sends. That charge is Meta’s rate plus 20% when the wallet pays the message, and 20% of Meta’s rate when Meta invoices the WhatsApp account. `markup_bps` is a percentage on top of LazyApp’s price, in basis points — 1500 is 15%. On `PATCH /v1/platform/customers/{customer}` you can set `pricing_mode` to `percent` or `category`. In category mode, `category_markups` is rupees added per message type (`marketing`, `utility`, `authentication`, `service`). `platform_fee` is an optional monthly amount in rupees, charged once per calendar month from a prepaid customer wallet. There is no product cap. On inherit billing LazyApp does not collect that markup. On prepaid billing the customer balance is debited the marked-up amount.
 
 See [Create a customer](/api-reference/platform/create-a-customer) for all fields.
 
