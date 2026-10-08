@@ -7,11 +7,12 @@ Sends return `402` for billing. Other refusals stay `422`. Branch on `code`.
 
 | `code` | Cause | What to do |
 | --- | --- | --- |
-| `plan_message_allowance_exhausted` | The paying team's monthly message allowance is used up | Upgrade the plan. Reactions and inbound messages count. Read receipts do not |
 | `insufficient_credits` | Partner-managed templates or other non-service sends, and the prepaid wallet is at or below zero | Top up the wallet that this workspace draws (yours, the platform wallet on `inherit`, or the customer wallet on `prepaid`) |
 | `service_credits_exhausted` | The wallet is empty and a settled service charge has already been taken | Top up before the next service reply |
 
-`integration_call_allowance_exhausted` stops a workflow HTTP step when the monthly integration-call allowance is used up. `media_storage_exhausted` stops a media upload that would pass the plan's storage cap.
+The public wallet has no message cap. `plan_message_allowance_exhausted` is returned only when a message cap is configured on the paying account. Reactions and inbound messages count toward that cap. Read receipts do not.
+
+`integration_call_allowance_exhausted` and `media_storage_exhausted` work the same way: they fire only when that account has an integration-call cap or a media storage cap. The public wallet has neither.
 
 ## Customer-managed accounts
 
@@ -25,4 +26,4 @@ Funding status `revoked` pauses paid messages (`funding_revoked`). `not_attached
 
 ## Platform customers
 
-`postpaid` records usage and does not debit a wallet, so an empty wallet is not the pause. The plan allowance on the parent team still applies.
+`postpaid` records usage and does not debit a wallet, so an empty wallet is not the pause. A cap configured on the parent account still applies.

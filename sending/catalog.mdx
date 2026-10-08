@@ -3,7 +3,7 @@ title: "Catalog and products"
 description: "Send Meta Commerce product messages with a catalog id."
 ---
 
-Product and catalog interactive messages use a Meta Commerce catalog you already manage in Meta. LazyApp does not sync inventory — `commerce.catalog_sync` stays `false` until that connector ships.
+Product and catalog interactive messages use a Meta Commerce catalog you already manage in Meta. `GET /v1/catalog/products` reads Meta directly. `POST /v1/catalog/sync` copies the catalog into a local cache that lasts one hour. `commerce.catalog_sync` is on by default and can be turned off per connection.
 
 ## Catalog id on the connection
 
@@ -39,6 +39,18 @@ The connection must have `catalog_id` set. LazyApp proxies Meta's catalog produc
   "next_cursor": null
 }
 ```
+
+## Sync products
+
+```bash
+curl -X POST "https://lazyapp.in/v1/catalog/sync" \
+  -H "Authorization: Bearer $LAZYAPP_API_KEY" \
+  -H "Idempotency-Key: catalog-sync-1"
+```
+
+**Required scope:** `messages:send`
+
+The response includes `catalog_id`, `synced` (how many products were cached), `synced_at`, and `products` in the same shape as the list above. The cache lasts one hour. If `commerce.catalog_sync` is off, the call returns `422`.
 
 ## Send product interactive messages
 

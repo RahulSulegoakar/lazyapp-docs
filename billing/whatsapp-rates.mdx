@@ -29,18 +29,22 @@ Configurable in `pricing.free_rules` (defaults):
 
 Test mode charges service immediately and ignores the in-window rule and any monthly allowance. Treat `is_free` and `free_reason` on the usage row as what LazyApp billed.
 
-## Indicative India rates (Meta, INR)
+## India wallet prices
 
-Marketing copy on [lazyapp.in/pricing](https://lazyapp.in/pricing) shows **indicative** per-message figures for India. They are not a contract — Meta revises rates and regions.
+[lazyapp.in/pricing](https://lazyapp.in/pricing) shows what an Indian wallet pays before the 5% FX margin. These figures are Meta's India USD rate plus 20%, converted at ₹96.43 per dollar. They are not a contract. Meta revises rates, and the conversion rate can change.
 
-| Category | Indicative rate (₹) |
-| --- | --- |
-| Marketing | ~₹0.78–0.90 / message |
-| Utility | ~₹0.12–0.15 / message |
-| Authentication | ~₹0.12–0.20 / message |
-| Service (customer-initiated window) | Free |
+| Category | Partner-managed | Customer-managed |
+| --- | --- | --- |
+| Marketing | ₹1.31 | ₹0.22 |
+| Utility | ₹0.19 | ₹0.03 |
+| Authentication | ₹0.15 | ₹0.03 |
+| Service | ₹0.36 | ₹0.06 |
 
-For the full country matrix Meta publishes, see [Meta WhatsApp pricing](https://developers.facebook.com/docs/whatsapp/pricing). LazyApp's ledger stores USD region rates for DEFAULT, INDIA, NORTH_AMERICA, BRAZIL, and more as configured for your deployment — check **Usage** in the console for what your workspace actually charged.
+Partner-managed is the published rate plus 20%. Customer-managed is only the 20%, because Meta invoices the published rate. Service is charged. It is not free.
+
+When the WhatsApp account currency is not USD, partner-managed adds a further 5%. Messages that do not run through LazyApp add another 5% on that partner total.
+
+For the full country matrix Meta publishes, see [Meta WhatsApp pricing](https://developers.facebook.com/docs/whatsapp/pricing). The ledger stores USD region rates. Check **Usage** in the console for what your workspace actually charged.
 
 ## Rate table API
 

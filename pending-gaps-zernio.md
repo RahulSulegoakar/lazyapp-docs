@@ -7,7 +7,7 @@ description: "Internal tracker of product and documentation gaps compared to Zer
 
 Internal tracker for LazyApp vs [Zernio WhatsApp API](https://docs.zernio.com). **Code wins** — update this file when we ship or explicitly decline something.
 
-Last reviewed: 2026-09-02 (Wave 3 API gaps shipped)
+Last reviewed: 2026-10-08 (catalog sync, groups, funding, and the Meta proxy are in the API reference)
 
 <Note>
 This page is for the LazyApp team and implementers comparing surfaces to Zernio. Customer-facing docs link here only where we explicitly document a skip.

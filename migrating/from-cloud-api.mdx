@@ -47,6 +47,9 @@ Same body, same response shape, same error envelope. The version segment is acce
 | --- | --- |
 | `/meta/whatsapp/{version}/{phone_number_id}/messages` | `POST` |
 | `/meta/whatsapp/{version}/{phone_number_id}/media` | `POST` |
+| `/meta/whatsapp/{version}/{media}` | `GET`, `DELETE` |
+| `/meta/whatsapp/{version}/{phone_number_id}/whatsapp_business_profile` | `GET`, `POST` |
+| `/meta/whatsapp/{version}/{phone_number_id}/block_users` | `POST`, `DELETE` |
 | `/meta/whatsapp/{version}/{waba_id}/message_templates` | `GET`, `POST` |
 
 The proxy is a translation layer over the same services the native API uses, not a fork — so behaviour cannot drift between the two.

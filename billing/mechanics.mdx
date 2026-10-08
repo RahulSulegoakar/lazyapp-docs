@@ -4,19 +4,18 @@ description: "When the wallet is debited, when service charges wait for Meta, an
 ---
 
 ```text
-plan allowance  →  counted on each message (not a wallet debit)
 partner-managed →  usage row, then wallet debit of total_charge
 customer-managed → usage row with meta_rate, total_charge = 20% of that rate
-empty wallet or plan cap → HTTP 402
+empty wallet → HTTP 402
 ```
 
 ## What charges the card
 
 | Action | What happens |
 | --- | --- |
-| Subscribe | Checkout for Pro, or an Enterprise arrangement. On success the account plan updates, and included wallet credits are applied when that plan has them |
-| Wallet top-up (₹1,000 / ₹2,500 / ₹5,000 / ₹10,000) | Checkout. On `payment.succeeded` the wallet is credited and an invoice is stored |
-| Claim onboarding credits | One-time wallet credit (default **₹100**) when a billing account is created. Managed customer workspaces do not receive it |
+| Wallet top-up (₹999 / ₹2,500 / ₹5,000 / ₹10,000) | Checkout. On `payment.succeeded` the wallet is credited the same amount and a receipt is stored |
+
+There is no monthly subscription and no welcome credit. A new billing account starts with an empty wallet. Managed customer workspaces are not credited separately.
 
 ## When a message is debited
 
@@ -41,11 +40,11 @@ Re-recording the same message does not debit again after the wallet was charged,
 
 Markup stays on the retail figure you invoice. LazyApp does not collect it.
 
-Plan counters (messages, integration calls, connected numbers) use the paying team: the platform parent when the workspace is a platform customer.
+The public wallet has no message cap, media storage cap, or monthly integration-call cap. Those checks run only when a limit is set on the paying account: the platform parent when the workspace is a platform customer.
 
 ## Pauses
 
-Partner-managed templates and other non-service sends pause when the prepaid wallet is at or below zero (`insufficient_credits`). Service pauses with `service_credits_exhausted` only after a settled, non-free service charge exists and the balance is at or below zero. The plan cap pauses with `plan_message_allowance_exhausted` even when the wallet still has funds.
+Partner-managed templates and other non-service sends pause when the prepaid wallet is at or below zero (`insufficient_credits`). Service pauses with `service_credits_exhausted` only after a settled, non-free service charge exists and the balance is at or below zero. When a message cap is configured, that cap pauses with `plan_message_allowance_exhausted` even when the wallet still has funds.
 
 An empty wallet does not, by itself, block every workspace action. The send path checks the precise pause.
 
