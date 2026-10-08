@@ -1,37 +1,39 @@
 ---
 title: "Pricing"
-description: "Plan allowances and Meta message fees are two separate bills."
+description: "Add funds to a wallet. Each delivered message comes out of that balance."
 ---
 
-LazyApp bills you for the product. Meta bills delivered WhatsApp messages. Those charges never mix.
+There is no monthly plan. Add money to the workspace wallet and each delivered WhatsApp message comes out of that balance. Connecting a number does not add a fee. There is no message cap.
 
-1. **A plan** sets how many messages, numbers, and integration calls the workspace can use, plus HTTP and workflow limits.
-2. **Meta message fees** are either left on the WhatsApp Business Account, or passed through your LazyApp wallet when you choose partner-managed billing.
+Recharge packs credit the same rupees you pay:
 
-There is no monthly free-message ladder on the wallet. The plan allowance is the product cap. LazyApp adds 20% on Meta's published rate for every billable send.
+| Pack | Wallet credit |
+| --- | --- |
+| ₹999 | ₹999 |
+| ₹2,500 | ₹2,500 |
+| ₹5,000 | ₹5,000 |
+| ₹10,000 | ₹10,000 |
 
-## Plans
+Sending stops when the wallet is empty. LazyApp sends one reminder before the balance runs low. You can turn on automatic recharge.
 
-| Plan | Price | Messages / month | Numbers included | Extra number | Media | Integration calls / month | API requests / minute |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| **Free** | $0 | 2,000 | 1 | — | 1 GB | 0 | 100 |
-| **Pro** | ₹799 / month | 100,000 | 2 | ₹499 | 100 GB | 1,000 | 1,000 |
-| **Enterprise** | Custom | Unlimited | Unlimited | — | Unlimited | Unlimited | 4,000 |
+API speed limits stay in place so a workspace cannot flood the API. They are not a product allowance. Free workspaces are limited to 100 requests a minute and 5 workflow starts a second.
 
-A null allowance means unlimited. Free workspaces cannot run workflow integration calls. Workflow starts are limited per second: 5 on Free, 15 on Pro, and 30 on Enterprise.
+## Agencies
 
-Pro includes two connected numbers. Each number past that is debited at **₹499** once a month from the wallet, for as long as the number stays connected. Free includes one number. Connecting another is refused until the workspace is on a plan that bills extras.
+A brand or a platform customer can price on top of LazyApp in one of two ways:
 
-Enterprise is arranged with support. Checkout uses the product configured for that plan. A new workspace can claim a one-time welcome credit (default **₹100**). Managed customer workspaces do not receive it. Sends stop when a monthly allowance is used up. Extra messages are not billed one by one.
+- A percentage on the wallet price.
+- A rupee amount added to each message type: marketing, utility, authentication, and service.
 
-The Platform plan is not offered. A workspace already on it keeps that allowance until the plan changes. Older stored codes map to Pro: `starter`, `growth`, and `business`.
+Either can also charge an optional monthly platform fee. On a brand, that fee is debited from the customer wallet once a month and the difference is the brand’s earning. On a prepaid platform customer, the customer’s own balance is debited. An inherit customer still debits the platform wallet at LazyApp’s price. The platform invoices any markup itself.
 
-## Two bills
+## One wallet
 
-| Bill | Who charges | Where it shows up |
-| --- | --- | --- |
-| Plan | LazyApp | Message count, number overage, storage, integration calls |
-| Meta message fee | Meta, and LazyApp’s 20% on that rate | Usage ledger `meta_rate` and `total_charge` |
+| Charge | Where it shows up |
+| --- | --- |
+| Delivered message | Usage ledger `meta_rate` and `total_charge`, then the wallet |
+| Brand or platform price | The customer wallet, or the platform’s own invoice |
+| Platform fee | Once a month, when the agency turned it on |
 
 `customer_managed` is the default. LazyApp records `meta_rate` and debits 20% of it. Meta may still invoice the WhatsApp Business Account for the published rate.
 
@@ -45,11 +47,11 @@ See [Meta message billing](/billing/meta-message-billing) and [WhatsApp message 
 
 | Condition | `code` | HTTP |
 | --- | --- | --- |
-| Plan message allowance used up | `plan_message_allowance_exhausted` | `402` |
+| A configured message limit is used up | `plan_message_allowance_exhausted` | `402` |
 | Partner-managed wallet at or below zero | `insufficient_credits` | `402` |
 | Partner-managed service after a settled charge and an empty wallet | `service_credits_exhausted` | `402` |
 
-Reactions are free and are not paused, but they count toward the plan allowance. Read receipts do not count. Inbound messages count toward the plan and are not charged.
+Reactions are free and are not paused. Read receipts do not count. Inbound messages are not charged.
 
 ## Related
 
